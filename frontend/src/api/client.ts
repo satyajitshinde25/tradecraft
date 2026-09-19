@@ -1,7 +1,8 @@
 /* ── API Client for Market Sprint Backend ── */
 
-const API_BASE = 'http://localhost:8000';
-
+// Read API URL from Vite environment, fallback to localhost for development
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const WS_BASE = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
 function getToken(): string | null {
   return localStorage.getItem('ms_token');
 }
@@ -143,7 +144,7 @@ export function createMarketWebSocket(
   onMessage: (data: any) => void,
   onClose?: () => void,
 ): WebSocket {
-  const ws = new WebSocket(`ws://localhost:8000/ws/market`);
+  const ws = new WebSocket(`${WS_BASE}/ws/market`);
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
