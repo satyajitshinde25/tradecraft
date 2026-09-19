@@ -1,0 +1,28 @@
+.order-history-card h3 {
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.oh-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.oh-count {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.oh-empty {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 20px;
+}
+
+.oh-table-wrapper {
+  max-height: 300px;
+  overflow-y: auto;
+}

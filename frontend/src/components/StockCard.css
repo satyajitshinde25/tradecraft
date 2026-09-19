@@ -1,0 +1,90 @@
+.stock-card {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.sc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.sc-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sc-ticker-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sc-ticker {
+  font-size: 1.2rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.sc-change-badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.sc-name {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.sc-sector {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.sc-price-block {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sc-price {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.sc-change {
+  font-size: 0.8rem;
+}
+
+.sc-chart {
+  height: 100px;
+  margin: 4px -8px;
+}
+
+.sc-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 6px;
+  border-top: 1px solid rgba(30, 41, 59, 0.5);
+}
+
+.sc-holding-badge {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.sc-actions {
+  display: flex;
+  gap: 8px;
+}

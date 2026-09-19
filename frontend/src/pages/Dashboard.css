@@ -1,0 +1,135 @@
+.dashboard {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  padding-bottom: 40px;
+}
+
+.dashboard-loading {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--text-secondary);
+}
+
+/* ── Header ── */
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: rgba(17, 24, 39, 0.9);
+  border-bottom: 1px solid var(--border-primary);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.dash-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.dash-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.dash-status-pills {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dash-tick {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.dash-countdown {
+  color: var(--yellow);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.dash-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dash-team-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.dash-team-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.dash-team-code {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+}
+
+/* ── Stock Grid ── */
+.stock-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 0 24px;
+  margin-top: 16px;
+}
+
+@media (max-width: 1200px) {
+  .stock-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .stock-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Bottom Panels ── */
+.bottom-panels {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 16px 24px;
+}
+
+.panel-left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .dash-header {
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 16px;
+  }
+
+  .stock-grid {
+    padding: 0 12px;
+  }
+
+  .bottom-panels {
+    padding: 12px;
+  }
+}

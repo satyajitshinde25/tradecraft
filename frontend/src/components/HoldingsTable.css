@@ -1,0 +1,27 @@
+.holdings-card h3,
+.holdings-empty h3 {
+  font-size: 1rem;
+  margin-bottom: 14px;
+  color: var(--text-primary);
+}
+
+.holdings-empty {
+  text-align: center;
+  padding: 30px;
+}
+
+.holdings-empty p {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.h-ticker {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  margin-right: 8px;
+}
+
+.h-name {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}

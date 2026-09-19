@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.npm/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+venv/
+env/
+.env
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+market_sprint.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend build
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo

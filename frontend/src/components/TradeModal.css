@@ -1,0 +1,72 @@
+.tm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.tm-header h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.tm-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 16px;
+}
+
+.tm-company {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.tm-price {
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.tm-warning {
+  background: var(--yellow-bg);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--yellow);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  margin-bottom: 20px;
+}
+
+.tm-qty-row {
+  display: flex;
+  gap: 10px;
+}
+
+.tm-qty-row .input {
+  flex: 1;
+}
+
+.tm-detail {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(30, 41, 59, 0.3);
+}
+
+.tm-total {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 1rem;
+  border-bottom: none;
+  padding-top: 12px;
+}
+
+.tm-submit {
+  width: 100%;
+  margin-top: 20px;
+  padding: 14px;
+  font-size: 1rem;
+}

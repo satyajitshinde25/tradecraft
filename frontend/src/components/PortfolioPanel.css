@@ -1,0 +1,38 @@
+.portfolio-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 10px 24px;
+  background: rgba(17, 24, 39, 0.6);
+  border-bottom: 1px solid var(--border-primary);
+  overflow-x: auto;
+}
+
+.pf-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 16px;
+  min-width: fit-content;
+}
+
+.pf-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.pf-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pf-divider {
+  width: 1px;
+  height: 30px;
+  background: var(--border-primary);
+  flex-shrink: 0;
+}
