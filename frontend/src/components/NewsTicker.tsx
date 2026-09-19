@@ -8,7 +8,7 @@ interface Props {
   currentTick: number;
 }
 
-export default function NewsTicker({ news, currentTick }: Props) {
+export default function NewsTicker({ news }: Props) {
   const [expanded, setExpanded] = useState(false);
   const latestEvent = news.released_events.length > 0 ? news.released_events[0] : null;
 
