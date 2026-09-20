@@ -3,7 +3,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   adminGetGame, adminStartGame, adminRestartGame,
-  adminGetLeaderboard, adminGetOrders, adminGetAudit, logout
+  adminGetLeaderboard, adminGetOrders, adminGetAudit, logout,
+  adminPauseGame, adminResumeGame, adminToggleTestMode,
+  adminGetNewsScript, adminFireReserveHeadline
 } from '../api/client';
 import type { LeaderboardEntry } from '../types';
 import './AdminDashboard.css';
@@ -14,21 +16,23 @@ export default function AdminDashboard() {
   const [leaderboard, setLeaderboard] = useState<{ tick: number; entries: LeaderboardEntry[] } | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [audit, setAudit] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'leaderboard' | 'orders' | 'audit'>('leaderboard');
+  const [newsScript, setNewsScript] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'leaderboard' | 'orders' | 'audit' | 'news'>('leaderboard');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [countdown, setCountdown] = useState<number>(0);
   const [confirmRestart, setConfirmRestart] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [g, lb, od, au] = await Promise.all([
+      const [g, lb, od, au, ns] = await Promise.all([
         adminGetGame(), adminGetLeaderboard(),
-        adminGetOrders(), adminGetAudit(),
+        adminGetOrders(), adminGetAudit(), adminGetNewsScript(),
       ]);
       setGame(g);
       setLeaderboard(lb);
       setOrders(od.orders || []);
       setAudit(au.logs || []);
+      setNewsScript(ns.events || []);
     } catch (err) {
       console.error('Admin fetch error:', err);
     }
@@ -79,6 +83,26 @@ export default function AdminDashboard() {
     navigate('/');
   };
 
+  const handlePause = async () => {
+    try { await adminPauseGame(); showToast('Game paused', 'success'); fetchData(); }
+    catch (err: any) { showToast(err.message, 'error'); }
+  };
+
+  const handleResume = async () => {
+    try { await adminResumeGame(); showToast('Game resumed', 'success'); fetchData(); }
+    catch (err: any) { showToast(err.message, 'error'); }
+  };
+
+  const handleToggleTestMode = async () => {
+    try { await adminToggleTestMode(); showToast('Test mode toggled', 'success'); fetchData(); }
+    catch (err: any) { showToast(err.message, 'error'); }
+  };
+
+  const handleFireReserve = async (id: string) => {
+    try { await adminFireReserveHeadline(id); showToast('Reserve fired!', 'success'); fetchData(); }
+    catch (err: any) { showToast(err.message, 'error'); }
+  };
+
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
@@ -110,8 +134,23 @@ export default function AdminDashboard() {
         <div className="admin-header-right">
           <div className="admin-controls">
             {(game.status === 'DRAFT' || game.status === 'READY') && (
-              <button className="btn btn-buy" onClick={handleStart}>
-                ▶ Start Game
+              <>
+                <button className="btn btn-outline" onClick={handleToggleTestMode}>
+                  🧪 Test Mode: {game.is_test_mode ? 'ON (1s)' : 'OFF (75s)'}
+                </button>
+                <button className="btn btn-buy" onClick={handleStart}>
+                  ▶ Start Game
+                </button>
+              </>
+            )}
+            {game.status === 'RUNNING' && (
+              <button className="btn btn-outline" onClick={handlePause}>
+                ⏸ Pause
+              </button>
+            )}
+            {game.status === 'PAUSED' && (
+              <button className="btn btn-outline" onClick={handleResume}>
+                ▶ Resume
               </button>
             )}
             <button
@@ -137,7 +176,7 @@ export default function AdminDashboard() {
         </div>
         <div className="admin-stat">
           <span className="admin-stat-label">Tick Duration</span>
-          <span className="admin-stat-value mono">{game.tick_seconds}s</span>
+          <span className="admin-stat-value mono">{game.is_test_mode ? '1s' : `${game.tick_seconds}s`}</span>
         </div>
         <div className="admin-stat">
           <span className="admin-stat-label">Starting Balance</span>
@@ -145,13 +184,15 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ── Tab Navigation ── */}
       <div className="admin-tabs">
         <button className={`admin-tab ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}>
           🏆 Leaderboard
         </button>
         <button className={`admin-tab ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>
           📋 Orders ({orders.length})
+        </button>
+        <button className={`admin-tab ${activeTab === 'news' ? 'active' : ''}`} onClick={() => setActiveTab('news')}>
+          📰 News Script
         </button>
         <button className={`admin-tab ${activeTab === 'audit' ? 'active' : ''}`} onClick={() => setActiveTab('audit')}>
           📜 Audit Log
@@ -277,6 +318,48 @@ export default function AdminDashboard() {
                       <td>{log.team_code || '—'}</td>
                       <td className="mono">{log.tick ?? '—'}</td>
                       <td style={{ fontSize: '0.82rem', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>{log.message}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'news' && (
+          <div className="card admin-table-card">
+            <h3>📰 News Script & Controls</h3>
+            <div className="admin-table-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Tick</th>
+                    <th>Headline</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {newsScript.map((event: any) => (
+                    <tr key={event.id}>
+                      <td><span className="badge badge-blue">{event.event_type}</span></td>
+                      <td className="mono">{event.event_type === 'RESERVE' ? '—' : event.release_tick}</td>
+                      <td style={{ maxWidth: 400 }}><strong>{event.headline}</strong></td>
+                      <td>
+                        {event.released ? (
+                          <span className="badge badge-green">RELEASED @ {event.released_at ? new Date(event.released_at).toLocaleTimeString() : '—'}</span>
+                        ) : (
+                          <span className="badge badge-yellow">ARMED</span>
+                        )}
+                      </td>
+                      <td>
+                        {event.event_type === 'RESERVE' && !event.released && (
+                          <button className="btn btn-sell btn-sm" onClick={() => handleFireReserve(event.id)}>
+                            Fire Now
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

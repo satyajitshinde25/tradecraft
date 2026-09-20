@@ -29,6 +29,7 @@ class GameStatus(str, enum.Enum):
     DRAFT = "DRAFT"
     READY = "READY"
     RUNNING = "RUNNING"
+    PAUSED = "PAUSED"
     CLOSING = "CLOSING"
     FINISHED = "FINISHED"
 
@@ -55,6 +56,9 @@ class Game(Base):
     status = Column(String, nullable=False, default=GameStatus.DRAFT.value)
     start_time = Column(DateTime(timezone=True), nullable=True)
     end_time = Column(DateTime(timezone=True), nullable=True)
+    paused_at = Column(DateTime(timezone=True), nullable=True)
+    admin_session_token = Column(String, nullable=True)
+    is_test_mode = Column(Boolean, nullable=False, default=False)
     tick_seconds = Column(Integer, nullable=False, default=75)
     starting_balance = Column(Float, nullable=False, default=10000.00)
     max_trades = Column(Integer, nullable=False, default=22)
@@ -111,6 +115,7 @@ class TeamCredential(Base):
     failed_attempts = Column(Integer, nullable=False, default=0)
     locked_until = Column(DateTime(timezone=True), nullable=True)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
+    active_session_token = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

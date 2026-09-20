@@ -29,10 +29,13 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     # Check for admin login
     if request.team_id.upper() == "ADMIN":
         if request.password == settings.ADMIN_PASSWORD:
-            token = create_token({"role": "admin", "sub": "ADMIN"})
+            import uuid
+            new_token = str(uuid.uuid4())
+            token = create_token({"role": "admin", "sub": "ADMIN", "session": new_token})
 
             try:
                 game = get_game(db)
+                game.admin_session_token = new_token
                 log_event(db, "LOGIN_SUCCESS", game_id=game.id, message="Admin login")
                 db.commit()
             except Exception:
@@ -120,15 +123,19 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         )
 
     # Success — reset failures, create token
+    import uuid
+    new_token = str(uuid.uuid4())
     credential.failed_attempts = 0
     credential.locked_until = None
     credential.last_login_at = datetime.now(timezone.utc)
+    credential.active_session_token = new_token
 
     token = create_token({
         "team_id": team.id,
         "team_code": team.team_code,
         "role": "team",
         "sub": team.team_code,
+        "session": new_token,
     })
 
     log_event(
@@ -159,5 +166,12 @@ def logout(
         team_id=team.id,
         message=f"{team.team_code} logged out",
     )
+    
+    # Clear active session
+    from ..models import TeamCredential
+    credential = db.query(TeamCredential).filter(TeamCredential.team_id == team.id).first()
+    if credential:
+        credential.active_session_token = None
+        
     db.commit()
     return {"message": "Logged out"}

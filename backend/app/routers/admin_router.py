@@ -137,6 +137,127 @@ def restart_game(
     }
 
 
+@router.post("/game/pause")
+def pause_game(
+    admin: dict = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Pause the simulation clock."""
+    game = get_game(db)
+    if game.status != GameStatus.RUNNING.value:
+        raise HTTPException(status_code=400, detail="Game is not running")
+
+    game.status = GameStatus.PAUSED.value
+    game.paused_at = datetime.now(timezone.utc)
+    
+    log_event(db, "GAME_PAUSED", game_id=game.id, tick=get_current_tick(game), message="Game paused by admin")
+    db.commit()
+    return {"message": "Game paused"}
+
+
+@router.post("/game/resume")
+def resume_game(
+    admin: dict = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Resume the simulation clock by shifting start_time."""
+    game = get_game(db)
+    if game.status != GameStatus.PAUSED.value:
+        raise HTTPException(status_code=400, detail="Game is not paused")
+
+    now = datetime.now(timezone.utc)
+    paused_at = game.paused_at
+    if paused_at.tzinfo is None:
+        paused_at = paused_at.replace(tzinfo=timezone.utc)
+        
+    pause_duration = (now - paused_at).total_seconds()
+    
+    start = game.start_time
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+        
+    from datetime import timedelta
+    game.start_time = start + timedelta(seconds=pause_duration)
+    game.status = GameStatus.RUNNING.value
+    game.paused_at = None
+    
+    log_event(db, "GAME_RESUMED", game_id=game.id, tick=get_current_tick(game), message="Game resumed by admin")
+    db.commit()
+    return {"message": "Game resumed"}
+
+
+@router.post("/game/test-mode")
+def toggle_test_mode(
+    admin: dict = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Toggle 1 second/tick mode."""
+    game = get_game(db)
+    if game.status not in (GameStatus.DRAFT.value, GameStatus.READY.value):
+        raise HTTPException(status_code=400, detail="Can only toggle test mode before starting")
+        
+    game.is_test_mode = not game.is_test_mode
+    db.commit()
+    return {"message": f"Test mode is now {'ON' if game.is_test_mode else 'OFF'}"}
+
+
+@router.get("/news-script")
+def get_news_script(
+    admin: dict = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Get the full news script (armed, released, scheduled, reserve)."""
+    game = get_game(db)
+    events = db.query(NewsEvent).filter(NewsEvent.game_id == game.id).order_by(NewsEvent.release_tick, NewsEvent.event_number).all()
+    
+    return {
+        "events": [
+            {
+                "id": e.id,
+                "event_number": e.event_number,
+                "release_tick": e.release_tick,
+                "event_type": e.event_type,
+                "headline": e.headline,
+                "is_scheduled": e.is_scheduled,
+                "released": e.released,
+                "released_at": e.released_at.isoformat() if e.released_at else None,
+            } for e in events
+        ]
+    }
+
+
+@router.post("/game/fire-reserve/{event_id}")
+def fire_reserve(
+    event_id: str,
+    admin: dict = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Manually fire a reserve headline immediately."""
+    game = get_game(db)
+    if game.status != GameStatus.RUNNING.value:
+        raise HTTPException(status_code=400, detail="Game must be running to fire reserve news")
+        
+    event = db.query(NewsEvent).filter(NewsEvent.id == event_id, NewsEvent.game_id == game.id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="News event not found")
+        
+    if event.event_type != "RESERVE":
+        raise HTTPException(status_code=400, detail="Can only manually fire reserve events")
+        
+    if event.released:
+        raise HTTPException(status_code=400, detail="Event already released")
+        
+    current_tick = get_current_tick(game)
+    event.released = True
+    event.released_at = datetime.now(timezone.utc)
+    event.release_tick = current_tick
+    
+    log_event(db, "RESERVE_NEWS_FIRED", game_id=game.id, tick=current_tick, message=f"Fired reserve news: {event.headline[:20]}")
+    db.commit()
+    
+    return {"message": "Reserve news fired successfully"}
+
+
 @router.get("/leaderboard")
 def admin_leaderboard(
     admin: dict = Depends(get_admin_user),

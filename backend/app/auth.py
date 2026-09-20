@@ -79,11 +79,20 @@ def get_current_team(
             detail="Team not found or inactive",
         )
 
+    session_token = payload.get("session")
+    credential = db.query(TeamCredential).filter(TeamCredential.team_id == team.id).first()
+    if credential and credential.active_session_token and credential.active_session_token != session_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired. Logged in from another device.",
+        )
+
     return team
 
 
 def get_admin_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
 ) -> dict:
     """
     Validate admin JWT. Returns the decoded payload.
@@ -95,6 +104,15 @@ def get_admin_user(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
+        )
+
+    session_token = payload.get("session")
+    from .services.game_clock import get_game
+    game = get_game(db)
+    if game.admin_session_token and game.admin_session_token != session_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired. Logged in from another device.",
         )
 
     return payload

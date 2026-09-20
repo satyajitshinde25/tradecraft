@@ -119,6 +119,43 @@ export async function adminRestartGame() {
   return handleResponse(res);
 }
 
+export async function adminPauseGame() {
+  const res = await fetch(`${API_BASE}/admin/game/pause`, {
+    method: 'POST',
+    headers: getHeaders(),
+  });
+  return handleResponse(res);
+}
+
+export async function adminResumeGame() {
+  const res = await fetch(`${API_BASE}/admin/game/resume`, {
+    method: 'POST',
+    headers: getHeaders(),
+  });
+  return handleResponse(res);
+}
+
+export async function adminToggleTestMode() {
+  const res = await fetch(`${API_BASE}/admin/game/test-mode`, {
+    method: 'POST',
+    headers: getHeaders(),
+  });
+  return handleResponse(res);
+}
+
+export async function adminGetNewsScript() {
+  const res = await fetch(`${API_BASE}/admin/news-script`, { headers: getHeaders() });
+  return handleResponse(res);
+}
+
+export async function adminFireReserveHeadline(eventId: string) {
+  const res = await fetch(`${API_BASE}/admin/game/fire-reserve/${eventId}`, {
+    method: 'POST',
+    headers: getHeaders(),
+  });
+  return handleResponse(res);
+}
+
 export async function adminGetLeaderboard() {
   const res = await fetch(`${API_BASE}/admin/leaderboard`, { headers: getHeaders() });
   return handleResponse(res);

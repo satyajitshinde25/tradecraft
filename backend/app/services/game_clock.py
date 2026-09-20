@@ -21,13 +21,20 @@ def get_current_tick(game: Game) -> int:
     if game.start_time is None:
         return 0
 
-    now = datetime.now(timezone.utc)
+    end_time = datetime.now(timezone.utc)
+    if game.status == GameStatus.PAUSED.value and game.paused_at:
+        end_time = game.paused_at
+        if end_time.tzinfo is None:
+            end_time = end_time.replace(tzinfo=timezone.utc)
+
     start = game.start_time
     if start.tzinfo is None:
         start = start.replace(tzinfo=timezone.utc)
 
-    elapsed = (now - start).total_seconds()
-    tick = floor(elapsed / game.tick_seconds)
+    elapsed = (end_time - start).total_seconds()
+    
+    tick_secs = 1 if game.is_test_mode else game.tick_seconds
+    tick = floor(elapsed / tick_secs)
 
     # Bound to valid range
     tick = max(0, min(96, tick))
@@ -51,8 +58,15 @@ def get_tick_timing(game: Game, current_tick: int) -> dict:
 
     from datetime import timedelta
 
-    tick_start = start + timedelta(seconds=current_tick * game.tick_seconds)
-    next_tick = start + timedelta(seconds=(current_tick + 1) * game.tick_seconds)
+    tick_secs = 1 if game.is_test_mode else game.tick_seconds
+    tick_start = start + timedelta(seconds=current_tick * tick_secs)
+    next_tick = start + timedelta(seconds=(current_tick + 1) * tick_secs)
+
+    if game.status == GameStatus.PAUSED.value:
+        return {
+            "tick_started_at": tick_start.isoformat(),
+            "next_tick_at": None,
+        }
 
     return {
         "tick_started_at": tick_start.isoformat(),
