@@ -28,6 +28,26 @@
   z-index: 100;
 }
 
+.dash-permanent-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(99, 102, 241, 0.1);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.25);
+  padding: 7px 24px;
+  font-size: 0.82rem;
+  color: #c7d2fe;
+}
+
+.dash-permanent-notice strong {
+  color: #818cf8;
+}
+
+.dash-permanent-notice u {
+  text-decoration-color: #f59e0b;
+  font-weight: 600;
+}
+
 .dash-header-left {
   display: flex;
   align-items: center;

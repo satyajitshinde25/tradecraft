@@ -1,8 +1,7 @@
 """
 Market Sprint — Portfolio Router
 
-GET /portfolio
-GET /holdings
+GET /portfolio: Get full portfolio summary for the authenticated team
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -13,6 +12,7 @@ from ..models import Team
 from ..schemas import PortfolioResponse, HoldingResponse
 from ..services.game_clock import get_game, get_current_tick
 from ..services.portfolio import get_portfolio
+from ..services.orders import process_pending_orders
 
 router = APIRouter(prefix="/portfolio", tags=["Portfolio"])
 
@@ -25,6 +25,10 @@ def portfolio(
     """Get full portfolio summary for the authenticated team."""
     game = get_game(db)
     current_tick = get_current_tick(game)
+
+    # Process pending orders whose fill tick has arrived
+    process_pending_orders(db, game, current_tick)
+
     data = get_portfolio(db, game, team, current_tick)
 
     return PortfolioResponse(

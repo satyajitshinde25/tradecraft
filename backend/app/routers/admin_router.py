@@ -23,6 +23,7 @@ from ..services.game_clock import get_game, get_current_tick, get_tick_timing
 from ..services.leaderboard import calculate_leaderboard
 from ..services.news import reset_news_for_restart
 from ..services.audit import log_event
+from ..services.orders import process_pending_orders
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -218,12 +219,49 @@ def get_news_script(
                 "release_tick": e.release_tick,
                 "event_type": e.event_type,
                 "headline": e.headline,
+                "calendar_title": e.calendar_title,
+                "time_offset": e.time_offset,
+                "forecast": e.forecast,
                 "is_scheduled": e.is_scheduled,
                 "released": e.released,
                 "released_at": e.released_at.isoformat() if e.released_at else None,
             } for e in events
         ]
     }
+
+
+@router.get("/news-generator/candidates")
+def get_candidate_headlines(
+    category: str = "all",
+    admin: dict = Depends(get_admin_user),
+):
+    """
+    Prep-time fictional news candidate generator (Organizer authoring tool).
+    Provides factual, non-predictive Meridia headline templates across Macro, Company, and Policy.
+    """
+    templates = [
+        # Macro
+        {"category": "MACRO", "title": "MRB Neutral Stance", "headline": "MRB releases quarterly statement; benchmark rates maintained at current target.", "suggested_drivers": "RATES: 0, DEMAND: +1", "profile": "STEP"},
+        {"category": "MACRO", "title": "Retail Sales Expansion", "headline": "Meridian retail spending expands 1.4% month-on-month, beating expectations.", "suggested_drivers": "DEMAND: +2, SENTIMENT: +1", "profile": "SLOW-BURN"},
+        {"category": "MACRO", "title": "Freight Cost Reduction", "headline": "Shipping import price index declines as maritime freight bottlenecks clear.", "suggested_drivers": "OIL: -1, DEMAND: +1", "profile": "STEP"},
+        {"category": "MACRO", "title": "Manufacturing Expansion", "headline": "Meridia industrial output climbs to multi-quarter high on supply resilience.", "suggested_drivers": "DEMAND: +2", "profile": "SLOW-BURN"},
+        # Company-specific
+        {"category": "COMPANY", "ticker": "TAVR", "title": "TAVR Exploration Well", "headline": "Tavorin Energy reports commercial hydrocarbon discovery in Northern Basin.", "suggested_drivers": "OIL: +2 (direct: TAVR +3.5%)", "profile": "STEP"},
+        {"category": "COMPANY", "ticker": "AERV", "title": "AERV Fleet Optimization", "headline": "Aerovia Airlines completes domestic fleet modernization, lowering fuel burn.", "suggested_drivers": "direct: AERV +3.0%", "profile": "STEP"},
+        {"category": "COMPANY", "ticker": "VLTN", "title": "VLTN Commercial Lending", "headline": "Vaultline Bank reports 4.2% expansion in institutional credit portfolio.", "suggested_drivers": "direct: VLTN +2.5%", "profile": "SLOW-BURN"},
+        {"category": "COMPANY", "ticker": "BRKW", "title": "BRKW Project Approval", "headline": "Brickwell Developers receives municipal green light for Harborfront mixed-use hub.", "suggested_drivers": "direct: BRKW +4.0%", "profile": "SPIKE-AND-FADE"},
+        {"category": "COMPANY", "ticker": "LMRA", "title": "LMRA Sovereign Cloud Deal", "headline": "Lumora Labs selected to deploy secure sovereign cloud infrastructure for state agencies.", "suggested_drivers": "direct: LMRA +5.0%", "profile": "STEP"},
+        {"category": "COMPANY", "ticker": "GRFD", "title": "GRFD Retail Contract", "headline": "Greenfield Foods signs nationwide supply agreement with leading grocery conglomerate.", "suggested_drivers": "direct: GRFD +3.0%", "profile": "STEP"},
+        # Policy
+        {"category": "POLICY", "title": "Commercial Subsidies", "headline": "Ministry of Development launches regional commercial infrastructure development grant.", "suggested_drivers": "DEMAND: +1, BRKW: +2", "profile": "SLOW-BURN"},
+        {"category": "POLICY", "title": "Aviation Safety Guidelines", "headline": "Civil Aviation Authority issues updated scheduled maintenance compliance directive.", "suggested_drivers": "AERV: -1.5%", "profile": "STEP"},
+        {"category": "POLICY", "title": "Financial Buffer Framework", "headline": "Banking supervisory committee proposes countercyclical capital buffer calibration.", "suggested_drivers": "VLTN: -1.0%", "profile": "SLOW-BURN"},
+    ]
+
+    if category.upper() in ["MACRO", "COMPANY", "POLICY"]:
+        filtered = [t for t in templates if t["category"] == category.upper()]
+        return {"candidates": filtered}
+    return {"candidates": templates}
 
 
 @router.post("/game/fire-reserve/{event_id}")
@@ -252,10 +290,10 @@ def fire_reserve(
     event.released_at = datetime.now(timezone.utc)
     event.release_tick = current_tick
     
-    log_event(db, "RESERVE_NEWS_FIRED", game_id=game.id, tick=current_tick, message=f"Fired reserve news: {event.headline[:20]}")
+    log_event(db, "RESERVE_NEWS_FIRED", game_id=game.id, tick=current_tick, message=f"Fired reserve news: {event.headline}")
     db.commit()
     
-    return {"message": "Reserve news fired successfully"}
+    return {"message": f"Reserve news fired successfully at Tick {current_tick}"}
 
 
 @router.get("/leaderboard")
@@ -266,6 +304,7 @@ def admin_leaderboard(
     """Get full leaderboard (admin-only)."""
     game = get_game(db)
     current_tick = get_current_tick(game)
+    process_pending_orders(db, game, current_tick)
     entries = calculate_leaderboard(db, game, current_tick)
 
     return {
@@ -282,6 +321,7 @@ def admin_teams(
     """Get detailed status for all 25 teams."""
     game = get_game(db)
     current_tick = get_current_tick(game)
+    process_pending_orders(db, game, current_tick)
     entries = calculate_leaderboard(db, game, current_tick)
 
     return {"teams": entries}
@@ -294,6 +334,8 @@ def admin_orders(
 ):
     """Get all orders across all teams."""
     game = get_game(db)
+    current_tick = get_current_tick(game)
+    process_pending_orders(db, game, current_tick)
 
     orders = (
         db.query(Order, Team.team_code, Game)

@@ -28,8 +28,8 @@ export default function TradeModal({
 
   const maxBuyQty = Math.floor((cash * 0.99) / (currentPrice * (1 + feePercent / 100)));
   const maxQty = side === 'BUY' ? Math.max(0, maxBuyQty) : holdingQty;
-
-  const canSubmit = qty > 0 && qty <= maxQty && !loading;
+  const meetsMinOrder = estimatedValue >= 100.0;
+  const canSubmit = qty > 0 && qty <= maxQty && meetsMinOrder && !loading;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -54,8 +54,14 @@ export default function TradeModal({
         </div>
 
         <div className="tm-warning">
-          ⚠️ Orders fill at the <strong>next tick's price</strong>, not the price shown above.
+          ⚡ Orders enter pending status and fill at the <strong>next tick's price</strong>. Minimum order: <strong>₡100</strong>.
         </div>
+
+        {qty > 0 && !meetsMinOrder && (
+          <div className="tm-warning" style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.4)' }}>
+            ⚠️ Order value (₡{estimatedValue.toFixed(2)}) is below the ₡100 minimum order requirement.
+          </div>
+        )}
 
         <div className="form-group">
           <label>Quantity</label>

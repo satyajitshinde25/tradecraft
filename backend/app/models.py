@@ -203,6 +203,8 @@ class NewsEvent(Base):
     event_type = Column(String, nullable=False)  # SURPRISE, SCHEDULED
     headline = Column(String, nullable=False)
     description = Column(Text, nullable=True)
+    calendar_title = Column(String, nullable=True)
+    time_offset = Column(String, nullable=True)
     forecast = Column(Text, nullable=True)  # for scheduled events
     affected_tickers = Column(String, nullable=True)  # comma-separated
     is_scheduled = Column(Boolean, nullable=False, default=False)
@@ -211,7 +213,7 @@ class NewsEvent(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
     __table_args__ = (
-        CheckConstraint("release_tick >= 0 AND release_tick <= 96", name="ck_news_tick_range"),
+        CheckConstraint("release_tick >= -1 AND release_tick <= 96", name="ck_news_tick_range"),
         Index("ix_news_game_tick", "game_id", "release_tick"),
     )
 

@@ -49,7 +49,20 @@ def get_portfolio(db: Session, game: Game, team: Team, current_tick: int) -> dic
             })
             total_holdings_value += market_value
 
-    portfolio_value = round(cash + total_holdings_value, 2)
+    # Pending orders: include reserved cash for pending buys so portfolio value remains continuous
+    pending_buys = (
+        db.query(Order)
+        .filter(
+            Order.team_id == team.id,
+            Order.game_id == game.id,
+            Order.status == OrderStatus.PENDING.value,
+            Order.side == "BUY",
+        )
+        .all()
+    )
+    pending_buy_value = sum(o.gross_value or 0.0 for o in pending_buys)
+
+    portfolio_value = round(cash + total_holdings_value + pending_buy_value, 2)
     profit_loss = round(portfolio_value - starting, 2)
     profit_loss_pct = round((profit_loss / starting) * 100, 2) if starting > 0 else 0
 
@@ -61,7 +74,7 @@ def get_portfolio(db: Session, game: Game, team: Team, current_tick: int) -> dic
             Order.game_id == game.id,
             Order.status == OrderStatus.FILLED.value,
         )
-        .scalar()
+        .scalar() or 0
     )
 
     companies_traded = (
@@ -71,10 +84,10 @@ def get_portfolio(db: Session, game: Game, team: Team, current_tick: int) -> dic
             Order.game_id == game.id,
             Order.status == OrderStatus.FILLED.value,
         )
-        .scalar()
+        .scalar() or 0
     )
 
-    is_eligible = (trade_count or 0) >= 6 and (companies_traded or 0) >= 3
+    is_eligible = trade_count >= 6 and companies_traded >= 3
 
     return {
         "team_code": team.team_code,
@@ -85,9 +98,9 @@ def get_portfolio(db: Session, game: Game, team: Team, current_tick: int) -> dic
         "starting_balance": starting,
         "profit_loss": profit_loss,
         "profit_loss_percent": profit_loss_pct,
-        "trades_used": trade_count or 0,
+        "trades_used": trade_count,
         "max_trades": game.max_trades,
-        "companies_traded": companies_traded or 0,
+        "companies_traded": companies_traded,
         "is_eligible": is_eligible,
         "holdings": holdings_list,
     }

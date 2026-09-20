@@ -156,6 +156,13 @@ export async function adminFireReserveHeadline(eventId: string) {
   return handleResponse(res);
 }
 
+export async function adminGetCandidateHeadlines(category: string = 'all') {
+  const res = await fetch(`${API_BASE}/admin/news-generator/candidates?category=${category}`, {
+    headers: getHeaders(),
+  });
+  return handleResponse(res);
+}
+
 export async function adminGetLeaderboard() {
   const res = await fetch(`${API_BASE}/admin/leaderboard`, { headers: getHeaders() });
   return handleResponse(res);

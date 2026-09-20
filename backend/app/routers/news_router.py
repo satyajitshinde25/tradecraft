@@ -1,7 +1,8 @@
 """
 Market Sprint — News Router
 
-GET /news
+GET /news: Retrieves all officially released news events and upcoming scheduled events
+(with calendar titles and forecasts only; secret surprise headlines remain hidden).
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -21,7 +22,7 @@ def get_news(
     team: Team = Depends(get_current_team),
     db: Session = Depends(get_db),
 ):
-    """Get released news and upcoming scheduled events (without results)."""
+    """Get released news and upcoming scheduled events (sanitized, no leak of results)."""
     game = get_game(db)
     current_tick = get_current_tick(game)
 
@@ -35,6 +36,8 @@ def get_news(
                 release_tick=evt.release_tick,
                 event_type=evt.event_type,
                 headline=evt.headline,
+                calendar_title=evt.calendar_title,
+                time_offset=evt.time_offset,
                 description=evt.description,
                 forecast=evt.forecast,
                 is_scheduled=evt.is_scheduled,
@@ -46,7 +49,9 @@ def get_news(
             UpcomingScheduledEvent(
                 event_number=evt.event_number,
                 release_tick=evt.release_tick,
-                headline=f"📅 Scheduled: {evt.headline.split(':')[0] if ':' in evt.headline else evt.headline}",
+                calendar_title=evt.calendar_title or f"Scheduled Event {evt.event_number}",
+                headline=f"📅 {evt.calendar_title or 'Scheduled Event'}",
+                time_offset=evt.time_offset,
                 forecast=evt.forecast,
             )
             for evt in upcoming

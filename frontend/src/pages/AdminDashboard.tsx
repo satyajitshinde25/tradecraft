@@ -5,7 +5,7 @@ import {
   adminGetGame, adminStartGame, adminRestartGame,
   adminGetLeaderboard, adminGetOrders, adminGetAudit, logout,
   adminPauseGame, adminResumeGame, adminToggleTestMode,
-  adminGetNewsScript, adminFireReserveHeadline
+  adminGetNewsScript, adminFireReserveHeadline, adminGetCandidateHeadlines
 } from '../api/client';
 import type { LeaderboardEntry } from '../types';
 import './AdminDashboard.css';
@@ -17,7 +17,10 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [audit, setAudit] = useState<any[]>([]);
   const [newsScript, setNewsScript] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'leaderboard' | 'orders' | 'audit' | 'news'>('leaderboard');
+  const [activeTab, setActiveTab] = useState<'leaderboard' | 'orders' | 'audit' | 'news' | 'generator'>('leaderboard');
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const [candidateCat, setCandidateCat] = useState<string>('all');
+  const [candidateLoading, setCandidateLoading] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [countdown, setCountdown] = useState<number>(0);
   const [confirmRestart, setConfirmRestart] = useState(false);
@@ -101,6 +104,19 @@ export default function AdminDashboard() {
   const handleFireReserve = async (id: string) => {
     try { await adminFireReserveHeadline(id); showToast('Reserve fired!', 'success'); fetchData(); }
     catch (err: any) { showToast(err.message, 'error'); }
+  };
+
+  const loadCandidates = async (cat: string) => {
+    setCandidateLoading(true);
+    setCandidateCat(cat);
+    try {
+      const res = await adminGetCandidateHeadlines(cat);
+      setCandidates(res.candidates || []);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to load candidates', 'error');
+    } finally {
+      setCandidateLoading(false);
+    }
   };
 
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -193,6 +209,9 @@ export default function AdminDashboard() {
         </button>
         <button className={`admin-tab ${activeTab === 'news' ? 'active' : ''}`} onClick={() => setActiveTab('news')}>
           📰 News Script
+        </button>
+        <button className={`admin-tab ${activeTab === 'generator' ? 'active' : ''}`} onClick={() => { setActiveTab('generator'); if (candidates.length === 0) loadCandidates('all'); }}>
+          💡 Fictional News Generator
         </button>
         <button className={`admin-tab ${activeTab === 'audit' ? 'active' : ''}`} onClick={() => setActiveTab('audit')}>
           📜 Audit Log
@@ -345,7 +364,10 @@ export default function AdminDashboard() {
                     <tr key={event.id}>
                       <td><span className="badge badge-blue">{event.event_type}</span></td>
                       <td className="mono">{event.event_type === 'RESERVE' ? '—' : event.release_tick}</td>
-                      <td style={{ maxWidth: 400 }}><strong>{event.headline}</strong></td>
+                      <td style={{ maxWidth: 400 }}>
+                        <strong>{event.headline}</strong>
+                        {event.forecast && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>{event.forecast}</div>}
+                      </td>
                       <td>
                         {event.released ? (
                           <span className="badge badge-green">RELEASED @ {event.released_at ? new Date(event.released_at).toLocaleTimeString() : '—'}</span>
@@ -365,6 +387,59 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'generator' && (
+          <div className="card admin-table-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div>
+                <h3>💡 Prep-Time Fictional News Generator (Organizer Utility)</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>
+                  Generates candidate fact-like Meridia headlines across Macro, Company, and Policy templates for pre-event authoring.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {['all', 'macro', 'company', 'policy'].map(cat => (
+                  <button
+                    key={cat}
+                    className={`btn btn-sm ${candidateCat === cat ? 'btn-buy' : 'btn-outline'}`}
+                    onClick={() => loadCandidates(cat)}
+                  >
+                    {cat.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {candidateLoading ? (
+              <p style={{ color: 'var(--text-muted)', padding: 20 }}>Generating candidate templates...</p>
+            ) : (
+              <div className="admin-table-wrapper">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th>Template Title</th>
+                      <th>Headline (Factual / Non-predictive)</th>
+                      <th>Suggested Shock / Direct Impact</th>
+                      <th>Reaction Profile</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {candidates.map((c, i) => (
+                      <tr key={i}>
+                        <td><span className="badge badge-blue">{c.category}{c.ticker ? ` (${c.ticker})` : ''}</span></td>
+                        <td style={{ fontWeight: 600 }}>{c.title}</td>
+                        <td style={{ maxWidth: 450, fontWeight: 500 }}>{c.headline}</td>
+                        <td className="mono" style={{ color: '#38bdf8' }}>{c.suggested_drivers}</td>
+                        <td><span className="badge badge-yellow">{c.profile}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>

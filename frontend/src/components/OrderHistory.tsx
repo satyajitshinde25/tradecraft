@@ -55,7 +55,15 @@ export default function OrderHistory({ orders, maxTrades }: Props) {
                   </td>
                   <td className="mono" style={{ fontWeight: 600 }}>{o.ticker}</td>
                   <td className="mono">{o.quantity}</td>
-                  <td className="mono">{o.fill_price != null ? `₡${o.fill_price.toFixed(2)}` : '—'}</td>
+                  <td className="mono">
+                    {o.status === 'PENDING' ? (
+                      <span style={{ color: 'var(--yellow)', fontStyle: 'italic', fontSize: '0.78rem' }}>
+                        Pending (Tick {o.fill_tick})
+                      </span>
+                    ) : (
+                      o.fill_price != null ? `₡${o.fill_price.toFixed(2)}` : '—'
+                    )}
+                  </td>
                   <td className="mono">₡{o.fee.toFixed(2)}</td>
                   <td className="mono">{o.net_value != null ? `₡${o.net_value.toFixed(2)}` : '—'}</td>
                   <td><span className={`badge ${statusBadge(o.status)}`}>{o.status}</span></td>

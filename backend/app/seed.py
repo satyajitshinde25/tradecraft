@@ -21,56 +21,10 @@ from app.models import (
     Base, Game, Team, TeamCredential, Company, MarketPrice, MarketCandle,
     NewsEvent, TeamWallet, GameStatus
 )
-from app.price_generator import generate_price_series, NEWS_EVENTS_DATA
+from app.price_generator import generate_price_series, NEWS_EVENTS_DATA, CANONICAL_COMPANIES
 from passlib.hash import bcrypt
 
-
-# ── Company definitions ────────────────────────────────────────────
-
-COMPANIES = [
-    {
-        "ticker": "TAVR",
-        "name": "Tavros Energy",
-        "sector": "Oil and Gas Production",
-        "start_price": 84.50,
-        "description": "A vertically integrated oil and gas producer operating across exploration, refining, and distribution.",
-    },
-    {
-        "ticker": "AERV",
-        "name": "Aerovia Airlines",
-        "sector": "Air Travel",
-        "start_price": 42.80,
-        "description": "A leading regional airline operating domestic and short-haul international routes with a fleet of 85 aircraft.",
-    },
-    {
-        "ticker": "VLTN",
-        "name": "Vaultline Bank",
-        "sector": "Banking",
-        "start_price": 126.40,
-        "description": "A full-service commercial and investment bank serving retail, corporate, and institutional clients.",
-    },
-    {
-        "ticker": "BRKW",
-        "name": "Brickwell Developers",
-        "sector": "Property Development",
-        "start_price": 58.90,
-        "description": "A major residential and commercial property developer with projects across urban and suburban markets.",
-    },
-    {
-        "ticker": "LMRA",
-        "name": "Lumora Labs",
-        "sector": "Biotech",
-        "start_price": 71.20,
-        "description": "A clinical-stage biopharmaceutical company focused on gene therapy and precision oncology treatments.",
-    },
-    {
-        "ticker": "GRFD",
-        "name": "Greenfield Foods",
-        "sector": "Packaged Food and Groceries",
-        "start_price": 95.60,
-        "description": "A leading packaged food manufacturer and distributor supplying supermarkets and public institutions.",
-    },
-]
+COMPANIES = CANONICAL_COMPANIES
 
 # ── Team passwords ─────────────────────────────────────────────────
 # Format: TEAM-XX password is "sprint" + XX (e.g., TEAM-01 → "sprint01")
@@ -83,14 +37,14 @@ def get_team_password(team_number: int) -> str:
 def seed_database():
     """Run the full seed process."""
     print("=" * 60)
-    print("Market Sprint — Database Seeder")
+    print("Market Sprint -- Database Seeder")
     print("=" * 60)
 
     # Create all tables
     print("\n[1/7] Creating tables...")
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    print("  ✓ All tables created")
+    print("  [OK] All tables created")
 
     db = SessionLocal()
 
@@ -110,7 +64,7 @@ def seed_database():
         )
         db.add(game)
         db.flush()
-        print(f"  ✓ Game created: {game.id}")
+        print(f"  [OK] Game created: {game.id}")
 
         # ── 2. Create 25 teams ──────────────────────────────────
         print("\n[3/7] Creating 25 teams with hashed passwords...")
@@ -143,7 +97,7 @@ def seed_database():
             db.add(wallet)
 
             teams.append(team)
-            print(f"  ✓ {team_code} (password: {password})")
+            print(f"  [OK] {team_code} (password: {password})")
 
         db.flush()
 
@@ -162,7 +116,7 @@ def seed_database():
             db.add(company)
             db.flush()
             company_objects[c["ticker"]] = company
-            print(f"  ✓ {c['ticker']} — {c['name']} (₡{c['start_price']})")
+            print(f"  [OK] {c['ticker']} - {c['name']} ({c['start_price']} V-Coins)")
 
         # ── 4. Generate & insert 582 prices ─────────────────────
         print("\n[5/7] Generating 582 market prices...")
@@ -204,12 +158,12 @@ def seed_database():
                 db.add(candle)
                 candle_count += 1
 
-            print(f"  ✓ {ticker}: {len(prices)} prices (₡{prices[0]} → ₡{prices[-1]})")
+            print(f"  [OK] {ticker}: {len(prices)} prices ({prices[0]} -> {prices[-1]})")
 
         print(f"  Total: {price_count} prices, {candle_count} candles")
 
-        # ── 5. Create 14 news events ────────────────────────────
-        print("\n[6/7] Creating 14 news events...")
+        # ── 5. Create 14 news events + 2 reserve ─────────────────
+        print("\n[6/7] Creating 16 news events...")
         for evt_data in NEWS_EVENTS_DATA:
             evt = NewsEvent(
                 game_id=game.id,
@@ -217,6 +171,8 @@ def seed_database():
                 release_tick=evt_data["release_tick"],
                 event_type=evt_data["event_type"],
                 headline=evt_data["headline"],
+                calendar_title=evt_data.get("calendar_title"),
+                time_offset=evt_data.get("time_offset"),
                 description=evt_data["description"],
                 forecast=evt_data.get("forecast"),
                 affected_tickers=evt_data.get("affected_tickers"),
@@ -224,13 +180,14 @@ def seed_database():
                 released=False,
             )
             db.add(evt)
-            label = "📅 SCHEDULED" if evt_data["is_scheduled"] else "⚡ SURPRISE"
-            print(f"  ✓ Event {evt_data['event_number']:2d} (tick {evt_data['release_tick']:2d}) [{label}] {evt_data['headline'][:60]}...")
+            label = "SCHEDULED" if evt_data["is_scheduled"] else ("RESERVE" if evt_data["event_type"] == "RESERVE" else "SURPRISE")
+            tick_str = f"tick {evt_data['release_tick']:2d}" if evt_data['release_tick'] >= 0 else "reserve"
+            print(f"  [OK] Event {evt_data['event_number']:2d} ({tick_str}) [{label}] {evt_data['headline'][:50]}...")
 
         # ── 6. Commit ───────────────────────────────────────────
         print("\n[7/7] Committing to database...")
         db.commit()
-        print("  ✓ Database seeded successfully!")
+        print("  [OK] Database seeded successfully!")
 
         # ── Summary ─────────────────────────────────────────────
         print("\n" + "=" * 60)
@@ -241,15 +198,15 @@ def seed_database():
         print(f"  Companies: 6")
         print(f"  Prices:    {price_count}")
         print(f"  Candles:   {candle_count}")
-        print(f"  News:      14")
+        print(f"  News:      {len(NEWS_EVENTS_DATA)}")
         print(f"  Wallets:   25")
-        print(f"\n  Passwords: TEAM-XX → sprint+XX (e.g., TEAM-01 → sprint01)")
-        print(f"  Admin:     ADMIN → admin123")
+        print(f"\n  Passwords: TEAM-XX -> sprint+XX (e.g., TEAM-01 -> sprint01)")
+        print(f"  Admin:     ADMIN -> admin123")
         print("=" * 60)
 
     except Exception as e:
         db.rollback()
-        print(f"\n  ✗ ERROR: {e}")
+        print(f"\n  [ERROR] {e}")
         raise
     finally:
         db.close()

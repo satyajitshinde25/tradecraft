@@ -60,6 +60,8 @@ export interface NewsEvent {
   release_tick: number;
   event_type: string;
   headline: string;
+  calendar_title?: string | null;
+  time_offset?: string | null;
   description: string | null;
   forecast: string | null;
   is_scheduled: boolean;
@@ -69,7 +71,9 @@ export interface NewsEvent {
 export interface UpcomingEvent {
   event_number: number;
   release_tick: number;
+  calendar_title?: string;
   headline: string;
+  time_offset?: string | null;
   forecast: string | null;
 }
 
@@ -142,9 +146,12 @@ export interface WSMarketMessage {
   type: string;
   tick: number;
   status: string;
+  is_test_mode?: boolean;
   server_time: string;
   tick_started_at: string | null;
   next_tick_at: string | null;
+  latest_news?: NewsEvent | null;
+  upcoming_scheduled?: UpcomingEvent[];
   prices: {
     ticker: string;
     name: string;

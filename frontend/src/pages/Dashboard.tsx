@@ -84,14 +84,20 @@ export default function Dashboard() {
     const ws = createMarketWebSocket(
       (data: WSMarketMessage) => {
         if (data.type === 'market_update') {
-          setGameState(prev => prev ? {
-            ...prev,
-            current_tick: data.tick,
-            status: data.status,
-            server_time: data.server_time,
-            tick_started_at: data.tick_started_at,
-            next_tick_at: data.next_tick_at,
-          } : prev);
+          setGameState(prev => {
+            if (prev && prev.current_tick !== data.tick) {
+              // Tick advanced! Refresh portfolio and orders to show filled orders
+              fetchAllData();
+            }
+            return prev ? {
+              ...prev,
+              current_tick: data.tick,
+              status: data.status,
+              server_time: data.server_time,
+              tick_started_at: data.tick_started_at,
+              next_tick_at: data.next_tick_at,
+            } : prev;
+          });
 
           if (data.prices && market) {
             setMarket(prev => prev ? {
@@ -113,7 +119,7 @@ export default function Dashboard() {
     return () => {
       ws.close();
     };
-  }, []);
+  }, [fetchAllData, market]);
 
   // ── Countdown timer ──
   useEffect(() => {
@@ -136,7 +142,7 @@ export default function Dashboard() {
       } else {
         await submitSell(ticker, quantity);
       }
-      showToast(`${side} order filled: ${quantity} ${ticker}`, 'success');
+      showToast(`${side} order placed: ${quantity} ${ticker} (fills at Tick ${gameState!.current_tick + 1})`, 'success');
       setTradeModal(null);
       fetchAllData();
     } catch (err: any) {
@@ -206,6 +212,14 @@ export default function Dashboard() {
           <button className="btn btn-outline btn-sm" onClick={handleLogout}>Logout</button>
         </div>
       </header>
+
+      {/* ── Permanent Market Rule Notice (Spec Section 16) ── */}
+      <div className="dash-permanent-notice">
+        <span className="notice-icon">⚡</span>
+        <span className="notice-text">
+          <strong>TRADING RULE:</strong> Orders fill at the <u>next tick's price</u>. Minimum order: ₡100 | Fee: 0.4% | Cooldown: 7s | Max 22 trades.
+        </span>
+      </div>
 
       {/* ── Portfolio Summary Bar ── */}
       {portfolio && <PortfolioPanel portfolio={portfolio} />}

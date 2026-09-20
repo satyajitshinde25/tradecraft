@@ -81,6 +81,8 @@ class NewsEventResponse(BaseModel):
     release_tick: int
     event_type: str
     headline: str
+    calendar_title: Optional[str] = None
+    time_offset: Optional[str] = None
     description: Optional[str] = None
     forecast: Optional[str] = None
     is_scheduled: bool
@@ -90,7 +92,9 @@ class NewsEventResponse(BaseModel):
 class UpcomingScheduledEvent(BaseModel):
     event_number: int
     release_tick: int
+    calendar_title: str
     headline: str
+    time_offset: Optional[str] = None
     forecast: Optional[str] = None
 
 

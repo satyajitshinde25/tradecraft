@@ -1,9 +1,9 @@
 """
 Market Sprint — Order Router
 
-POST /orders/buy
-POST /orders/sell
-GET  /orders
+POST /orders/buy: Submit a BUY order (enters PENDING, executes at next tick)
+POST /orders/sell: Submit a SELL order (enters PENDING, executes at next tick)
+GET  /orders: Get all orders for the team, automatically reconciling completed pending fills
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -15,7 +15,10 @@ from ..models import Team, Order, OrderStatus, Company
 from ..schemas import OrderRequest, OrderResponse, OrderListResponse
 from ..services.game_clock import get_game, get_current_tick
 from ..services.market import get_company_by_ticker
-from ..services.orders import validate_and_execute_buy, validate_and_execute_sell, TradingError
+from ..services.orders import (
+    validate_and_execute_buy, validate_and_execute_sell,
+    process_pending_orders, TradingError
+)
 from ..services.audit import log_event
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -47,7 +50,7 @@ def buy_order(
     team: Team = Depends(get_current_team),
     db: Session = Depends(get_db),
 ):
-    """Submit a BUY order. Fills at the next tick's price."""
+    """Submit a BUY order. Enters PENDING state and fills at the next tick's price."""
     game = get_game(db)
     company = get_company_by_ticker(db, game, request.ticker.upper())
 
@@ -58,12 +61,12 @@ def buy_order(
         order = validate_and_execute_buy(db, game, team, company, request.quantity)
 
         log_event(
-            db, "ORDER_FILLED",
+            db, "ORDER_SUBMITTED",
             game_id=game.id,
             team_id=team.id,
             tick=order.submitted_tick,
             order_id=order.id,
-            message=f"BUY {request.quantity} {request.ticker} @ ₡{order.fill_price}",
+            message=f"BUY {request.quantity} {request.ticker} submitted at Tick {order.submitted_tick} (pending fill at Tick {order.fill_tick})",
         )
         db.commit()
 
@@ -87,7 +90,7 @@ def sell_order(
     team: Team = Depends(get_current_team),
     db: Session = Depends(get_db),
 ):
-    """Submit a SELL order. Fills at the next tick's price."""
+    """Submit a SELL order. Enters PENDING state and fills at the next tick's price."""
     game = get_game(db)
     company = get_company_by_ticker(db, game, request.ticker.upper())
 
@@ -98,12 +101,12 @@ def sell_order(
         order = validate_and_execute_sell(db, game, team, company, request.quantity)
 
         log_event(
-            db, "ORDER_FILLED",
+            db, "ORDER_SUBMITTED",
             game_id=game.id,
             team_id=team.id,
             tick=order.submitted_tick,
             order_id=order.id,
-            message=f"SELL {request.quantity} {request.ticker} @ ₡{order.fill_price}",
+            message=f"SELL {request.quantity} {request.ticker} submitted at Tick {order.submitted_tick} (pending fill at Tick {order.fill_tick})",
         )
         db.commit()
 
@@ -126,8 +129,12 @@ def get_orders(
     team: Team = Depends(get_current_team),
     db: Session = Depends(get_db),
 ):
-    """Get all orders for the authenticated team."""
+    """Get all orders for the authenticated team, processing any overdue pending fills."""
     game = get_game(db)
+    current_tick = get_current_tick(game)
+
+    # Process pending orders whose fill tick has arrived
+    process_pending_orders(db, game, current_tick)
 
     orders = (
         db.query(Order)
