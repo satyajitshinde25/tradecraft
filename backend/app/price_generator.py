@@ -7,22 +7,22 @@ News events at specific ticks cause price jumps using canonical Reaction Profile
 """
 import random
 
-# Ticks when news is released (Canonical 14-headline timeline)
+# Ticks when news is released (Canonical 14-headline timeline, 37.5s/tick for 1-hour contest)
 NEWS_TICKS = {
-    1: 10,   # T+12:30
-    2: 15,   # T+18:45
-    3: 24,   # T+30:00 (Scheduled - Consumer Confidence)
-    4: 29,   # T+36:15
-    5: 36,   # T+45:00 (Scheduled - Vaultline Earnings)
-    6: 42,   # T+52:30
-    7: 50,   # T+62:30
-    8: 56,   # T+70:00
-    9: 64,   # T+80:00 (Scheduled - MRB Rate Decision)
-    10: 69,  # T+86:15
-    11: 76,  # T+95:00
-    12: 83,  # T+103:45
-    13: 88,  # T+110:00
-    14: 92,  # T+115:00
+    1: 10,   # T+06:15
+    2: 15,   # T+09:22
+    3: 24,   # T+15:00 (Scheduled - Consumer Confidence)
+    4: 29,   # T+18:07
+    5: 36,   # T+22:30 (Scheduled - Vaultline Earnings)
+    6: 42,   # T+26:15
+    7: 50,   # T+31:15
+    8: 56,   # T+35:00
+    9: 64,   # T+40:00 (Scheduled - MRB Rate Decision)
+    10: 69,  # T+43:07
+    11: 76,  # T+47:30
+    12: 83,  # T+51:52
+    13: 88,  # T+55:00
+    14: 92,  # T+57:30
     15: -1,  # R1 Reserve (manually triggered only)
     16: -1,  # R2 Reserve (manually triggered only)
 }
@@ -225,7 +225,7 @@ NEWS_EVENTS_DATA = [
     {
         "event_number": 1,
         "release_tick": 10,
-        "time_offset": "T+12:30",
+        "time_offset": "T+06:15",
         "event_type": "SURPRISE",
         "headline": "Oil prices edge higher as fuel inventories fall.",
         "calendar_title": "Energy Inventory Report",
@@ -237,7 +237,7 @@ NEWS_EVENTS_DATA = [
     {
         "event_number": 2,
         "release_tick": 15,
-        "time_offset": "T+18:45",
+        "time_offset": "T+09:22",
         "event_type": "SURPRISE",
         "headline": "Aerovia signs code-share deal with major overseas carrier.",
         "calendar_title": "Carrier Partnership Announcement",
@@ -249,7 +249,7 @@ NEWS_EVENTS_DATA = [
     {
         "event_number": 3,
         "release_tick": 24,
-        "time_offset": "T+30:00",
+        "time_offset": "T+15:00",
         "event_type": "SCHEDULED",
         "headline": "Consumer confidence falls to 18-month low, missing forecasts.",
         "calendar_title": "Consumer Confidence",
@@ -261,7 +261,7 @@ NEWS_EVENTS_DATA = [
     {
         "event_number": 4,
         "release_tick": 29,
-        "time_offset": "T+36:15",
+        "time_offset": "T+18:07",
         "event_type": "SURPRISE",
         "headline": "Unconfirmed: global tech group weighing takeover bid for Lumora Labs.",
         "calendar_title": "Technology Sector Acquisition Rumours",
@@ -273,7 +273,7 @@ NEWS_EVENTS_DATA = [
     {
         "event_number": 5,
         "release_tick": 36,
-        "time_offset": "T+45:00",
+        "time_offset": "T+22:30",
         "event_type": "SCHEDULED",
         "headline": "Vaultline profit jumps 18%, dividend raised.",
         "calendar_title": "Vaultline Earnings",
@@ -285,7 +285,7 @@ NEWS_EVENTS_DATA = [
     {
         "event_number": 6,
         "release_tick": 42,
-        "time_offset": "T+52:30",
+        "time_offset": "T+26:15",
         "event_type": "SURPRISE",
         "headline": "Lumora Labs says it has received no takeover approach.",
         "calendar_title": "Lumora Corporate Statement",
@@ -297,7 +297,7 @@ NEWS_EVENTS_DATA = [
     {
         "event_number": 7,
         "release_tick": 50,
-        "time_offset": "T+62:30",
+        "time_offset": "T+31:15",
         "event_type": "SURPRISE",
         "headline": "Oil Producers' Alliance agrees to cut output sharply.",
         "calendar_title": "Oil Alliance Supply Decision",
@@ -309,7 +309,7 @@ NEWS_EVENTS_DATA = [
     {
         "event_number": 8,
         "release_tick": 56,
-        "time_offset": "T+70:00",
+        "time_offset": "T+35:00",
         "event_type": "SURPRISE",
         "headline": "Brokerage upgrades Brickwell to “Strong Buy”, calling shares undervalued.",
         "calendar_title": "Brokerage Equity Research",
@@ -321,7 +321,7 @@ NEWS_EVENTS_DATA = [
     {
         "event_number": 9,
         "release_tick": 64,
-        "time_offset": "T+80:00",
+        "time_offset": "T+40:00",
         "event_type": "SCHEDULED",
         "headline": "MRB raises interest rates by 0.50% in surprise move.",
         "calendar_title": "MRB Rate Decision",
@@ -333,7 +333,7 @@ NEWS_EVENTS_DATA = [
     {
         "event_number": 10,
         "release_tick": 69,
-        "time_offset": "T+86:15",
+        "time_offset": "T+43:07",
         "event_type": "SURPRISE",
         "headline": "Greenfield Foods pulls one snack line as a precaution over contamination reports.",
         "calendar_title": "Consumer Product Safety Notice",
@@ -345,7 +345,7 @@ NEWS_EVENTS_DATA = [
     {
         "event_number": 11,
         "release_tick": 76,
-        "time_offset": "T+95:00",
+        "time_offset": "T+47:30",
         "event_type": "SURPRISE",
         "headline": "Global markets rally as trade talks progress.",
         "calendar_title": "International Trade Summit",
@@ -357,7 +357,7 @@ NEWS_EVENTS_DATA = [
     {
         "event_number": 12,
         "release_tick": 83,
-        "time_offset": "T+103:45",
+        "time_offset": "T+51:52",
         "event_type": "SURPRISE",
         "headline": "Government proposes windfall tax on energy-sector profits.",
         "calendar_title": "Energy Fiscal Policy Leak",
@@ -369,7 +369,7 @@ NEWS_EVENTS_DATA = [
     {
         "event_number": 13,
         "release_tick": 88,
-        "time_offset": "T+110:00",
+        "time_offset": "T+55:00",
         "event_type": "SURPRISE",
         "headline": "Oil Producers' Alliance reverses output cut; supply restored.",
         "calendar_title": "Alliance Policy Reversal",
@@ -381,7 +381,7 @@ NEWS_EVENTS_DATA = [
     {
         "event_number": 14,
         "release_tick": 92,
-        "time_offset": "T+115:00",
+        "time_offset": "T+57:30",
         "event_type": "SURPRISE",
         "headline": "Regulator opens probe into Vaultline's lending practices.",
         "calendar_title": "Financial Conduct Authority Inquiry",

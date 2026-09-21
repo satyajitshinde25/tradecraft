@@ -30,7 +30,7 @@ class GameStateResponse(BaseModel):
     status: str
     current_tick: int
     max_tick: int = 96
-    tick_seconds: int
+    tick_seconds: float
     server_time: str
     tick_started_at: Optional[str] = None
     next_tick_at: Optional[str] = None

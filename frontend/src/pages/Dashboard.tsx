@@ -231,7 +231,7 @@ export default function Dashboard() {
       {portfolio && <PortfolioPanel portfolio={portfolio} />}
 
       {/* ── News Ticker ── */}
-      {news && <NewsTicker news={news} currentTick={gameState.current_tick} />}
+      {news && <NewsTicker news={news} currentTick={gameState.current_tick} tickSeconds={gameState.tick_seconds} />}
 
       {/* ── Stock Grid ── */}
       <div className="stock-grid">

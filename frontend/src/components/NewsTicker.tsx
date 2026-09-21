@@ -6,16 +6,17 @@ import './NewsTicker.css';
 interface Props {
   news: NewsResponse;
   currentTick: number;
+  tickSeconds?: number;
 }
 
-export default function NewsTicker({ news, currentTick }: Props) {
+export default function NewsTicker({ news, currentTick, tickSeconds = 37.5 }: Props) {
   const [showHistory, setShowHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [popupEvent, setPopupEvent] = useState<NewsEvent | null>(null);
 
-  // Format tick to simulation time (75s per tick: Tick 0 = 00:00:00, Tick 64 = 01:20:00)
+  // Format tick to simulation time (37.5s per tick for 1-hour contest: Tick 0 = 00:00:00, Tick 96 = 01:00:00)
   const formatSimulationTime = (tick: number) => {
-    const totalSecs = tick * 75;
+    const totalSecs = Math.round(tick * tickSeconds);
     const hrs = Math.floor(totalSecs / 3600);
     const mins = Math.floor((totalSecs % 3600) / 60);
     const secs = totalSecs % 60;

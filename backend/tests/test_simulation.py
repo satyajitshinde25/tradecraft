@@ -45,7 +45,7 @@ def db_session():
         name="Market Sprint Test",
         status=GameStatus.RUNNING.value,
         start_time=datetime.now(timezone.utc),
-        tick_seconds=75,
+        tick_seconds=37.5,
         starting_balance=10000.00,
         max_trades=22,
         buy_limit_percent=35.0,
@@ -340,7 +340,7 @@ def test_market_close_tick_96(db_session):
     vltn = companies["VLTN"]
 
     # Set game start_time to 96 ticks ago
-    game.start_time = datetime.now(timezone.utc) - timedelta(seconds=96 * 75 + 5)
+    game.start_time = datetime.now(timezone.utc) - timedelta(seconds=96 * game.tick_seconds + 5)
     session.commit()
 
     current_tick = get_current_tick(game)

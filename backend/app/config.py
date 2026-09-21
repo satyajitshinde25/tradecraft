@@ -13,8 +13,8 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str = "admin123"
     CORS_ORIGINS: str = "http://localhost:5173"
 
-    # Game defaults
-    TICK_SECONDS: int = 75
+    # Game defaults (1-hour contest: 96 ticks * 37.5s = 3600s = 60m)
+    TICK_SECONDS: float = 37.5
     STARTING_BALANCE: float = 10000.00
     MAX_TRADES: int = 22
     BUY_LIMIT_PERCENT: float = 35.0

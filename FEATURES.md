@@ -42,7 +42,7 @@ TradeCraft strictly bifurcates permissions between the **Administrator** (the co
 +=======================================================================================================+
 | Start, Pause, Resume Simulation Clock         |            ✅           |               ❌               |
 | Full Tournament Restart (Reset all 25 teams)  |            ✅           |               ❌               |
-| Toggle 1s Test Mode vs 75s Live Mode          |            ✅           |               ❌               |
+| Toggle 1s Test Mode vs 37.5s Live Mode        |            ✅           |               ❌               |
 | View Master Ranked Leaderboard                |            ✅           |          ❌ (Admin only)       |
 | Monitor All 25 Teams (Cash, Holdings, Orders) |            ✅           |               ❌               |
 | Inspect Global Orders Across All Teams        |            ✅           |               ❌               |
@@ -91,9 +91,9 @@ The Admin Command Center (`/admin`) is designed for event organizers to operate,
 
 ### 2.2 Simulation Speed Control (Test Mode vs Live Mode)
 - **Live Competition Mode (Default)**:
-  - **75 seconds per tick**.
-  - Total simulation duration: 96 ticks × 75s = **7,200 seconds (2 hours)**.
-  - Realistic decision-making tempo mirroring institutional markets.
+  - **37.5 seconds per tick**.
+  - Total simulation duration: 96 ticks × 37.5s = **3,600 seconds (1 hour / 60 minutes)**.
+  - High-tempo, high-intensity decision-making tempo mirroring institutional markets.
 - **Rapid Test Mode (1-Second Ticks)**:
   - **1 second per tick**.
   - Runs the entire 97-tick tournament in **97 seconds**.

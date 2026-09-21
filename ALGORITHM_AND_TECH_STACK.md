@@ -213,13 +213,13 @@ Every incoming order must pass through an atomic 8-point validation pipeline exe
 ### 2.6 Server-Authoritative Game Clock Algorithm
 
 #### Linear Tick Derivation
-Rather than running an imprecise server-side `while True: sleep(75)` loop that suffers from cumulative clock drift, the simulation derives the active tick mathematically from the database `start_time`:
+Rather than running an imprecise server-side `while True: sleep(...)` loop that suffers from cumulative clock drift, the simulation derives the active tick mathematically from the database `start_time`:
 
 $$\Delta t = \text{Server Time} - \text{Game Start Time}$$
 
 $$\text{Current Tick} = \min\left(96, \left\lfloor \frac{\Delta t}{\text{Tick Seconds}} \right\rfloor\right)$$
 
-Where $\text{Tick Seconds} = 75$ in live mode and $1$ in rapid test mode.
+Where $\text{Tick Seconds} = 37.5$ in live mode (1-hour contest duration: $96 \times 37.5\text{s} = 3,600\text{s} = 60\text{ minutes}$) and $1$ in rapid test mode.
 
 #### Zero-Distortion Pause & Resume
 When the administrator pauses the simulation at timestamp $t_{\text{pause}}$ and resumes at timestamp $t_{\text{resume}}$, the elapsed pause duration is computed:

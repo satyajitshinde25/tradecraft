@@ -54,7 +54,7 @@ def seed_database():
         game = Game(
             name="Market Sprint: Fictional Markets Edition",
             status=GameStatus.DRAFT.value,
-            tick_seconds=75,
+            tick_seconds=37.5,
             starting_balance=10000.00,
             max_trades=22,
             buy_limit_percent=35.0,

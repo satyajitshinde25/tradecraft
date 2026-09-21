@@ -152,7 +152,7 @@ export default function AdminDashboard() {
             {(game.status === 'DRAFT' || game.status === 'READY') && (
               <>
                 <button className="btn btn-outline" onClick={handleToggleTestMode}>
-                  🧪 Test Mode: {game.is_test_mode ? 'ON (1s)' : 'OFF (75s)'}
+                  🧪 Test Mode: {game.is_test_mode ? 'ON (1s)' : `OFF (${game.tick_seconds}s)`}
                 </button>
                 <button className="btn btn-buy" onClick={handleStart}>
                   ▶ Start Game

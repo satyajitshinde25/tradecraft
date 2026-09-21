@@ -85,7 +85,7 @@ status              ENUM
 start_time          TIMESTAMPTZ
 end_time            TIMESTAMPTZ
 current_tick        INTEGER
-tick_seconds        INTEGER DEFAULT 75
+tick_seconds        FLOAT DEFAULT 37.5
 starting_balance    NUMERIC(14,2) DEFAULT 10000
 max_trades          INTEGER DEFAULT 22
 buy_limit_percent   NUMERIC(5,2) DEFAULT 35
@@ -100,7 +100,7 @@ Constraints:
 
 ```text
 current_tick BETWEEN 0 AND 96
-tick_seconds = 75
+tick_seconds = 37.5 (1-hour contest)
 starting_balance = 10000
 ```
 
@@ -238,7 +238,7 @@ Important:
 
 - Tick 0 = opening price.
 - Tick 96 = closing price.
-- One tick = 75 seconds.
+- One tick = 37.5 seconds (1-hour contest total).
 - Do not update historical price rows during the live game.
 - Do not let participants write to this table.
 

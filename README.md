@@ -49,7 +49,7 @@ Unlike real-market simulators that rely on volatile external APIs (which allow p
 |    +-------------------------------------------------------------------------+    |
 |    |                         FASTAPI CORE BACKEND                            |    |
 |    |-------------------------------------------------------------------------|    |
-|    | - Game Clock Engine (75s live ticks / 1s rapid test mode)               |    |
+|    | - Game Clock Engine (37.5s live ticks / 1s rapid test mode)             |    |
 |    | - True Next-Tick Order Execution (T -> T+1 fills with variance adj.)    |    |
 |    | - Real-Time Risk & Allocation Guardrails (35% Buy / 60% Concentration)  |    |
 |    | - Timed News Dispatcher & Upcoming Calendar Redaction Filter            |    |
@@ -76,7 +76,7 @@ Unlike real-market simulators that rely on volatile external APIs (which allow p
 | **Max Concurrent Teams** | **25 Teams** | Fixed team accounts (`TEAM-01` to `TEAM-25`) with pre-seeded hashed credentials. |
 | **Starting Balance** | **₡10,000.00 V-Coins** | Uniform starting liquidity deposited into every team wallet at genesis. |
 | **Simulation Duration** | **97 Ticks (Tick 0 to 96)** | Tick 0 = opening bell; Tick 96 = closing bell (96 elapsed periods). |
-| **Tick Cadence** | **75 Seconds / Tick** | Total competition runtime of **120 minutes (2 hours)**. |
+| **Tick Cadence** | **37.5 Seconds / Tick** | Total competition runtime of **60 minutes (1 hour)**. |
 | **Rapid Test Mode** | **1 Second / Tick** | Full 97-tick game completes in **97 seconds** for organizer rehearsal and CI testing. |
 | **Fictional Equities** | **6 Canonical Equities** | Spanning Energy, Aviation, Banking, Real Estate, Enterprise Cloud, and Staples. |
 | **News Sequence** | **14 Core + 2 Reserve** | 3 Scheduled Macro Events + 11 Surprise Breaking Headlines + 2 Manual Reserve Events. |
@@ -187,49 +187,50 @@ Impact
 
 The news system is divided into **Scheduled Economic Events** (published on the public calendar with consensus forecasts) and **Surprise Breaking News** (unannounced releases that hit the tape instantly).
 
-### Canonical 14-Event Master Schedule
+### Canonical 14-Event Master Schedule (1-Hour Session, 37.5s/Tick)
 
 ```
 +=======================================================================================================================+
-| EVT | TICK | SIM TIME  | TYPE      | HEADLINE SUMMARY                             | FORECAST / CALENDAR TITLE         |
+| EVT | TICK | SIM TIME  | TYPE      | HEADLINE SUMMARY                             | CALENDAR TITLE / TOPIC            |
 +=======================================================================================================================+
-| #01 |  10  | T+12:30   | SURPRISE  | Oil prices edge higher as fuel inventories   | Energy Inventory Report           |
+| #01 |  10  | T+06:15   | SURPRISE  | Oil prices edge higher as fuel inventories   | Energy Inventory Report           |
 |     |      |           |           | fall. (TAVR +2.5%, AERV -1.5%)               |                                   |
-| #02 |  15  | T+18:45   | SURPRISE  | Aerovia signs overseas code-share deal.      | Carrier Partnership Announcement  |
+| #02 |  15  | T+09:22   | SURPRISE  | Aerovia signs overseas code-share deal.      | Carrier Partnership Announcement  |
 |     |      |           |           | (AERV +4.0%)                                 |                                   |
-| #03 |  24  | T+30:00   | SCHEDULED | Consumer confidence falls to 18-month low.   | [CALENDAR] Consumer Confidence    |
+| #03 |  24  | T+15:00   | SCHEDULED | Consumer confidence falls to 18-month low.   | Consumer Confidence               |
 |     |      |           |           | (GRFD -1.5%, BRKW -2.5%, AERV -2.0%)         | Forecast: Slight rise expected    |
-| #04 |  29  | T+36:15   | SURPRISE  | Unconfirmed takeover bid for Lumora Labs.    | Tech Sector Acquisition Rumours   |
+| #04 |  29  | T+18:07   | SURPRISE  | Unconfirmed takeover bid for Lumora Labs.    | Tech Sector Acquisition Rumours   |
 |     |      |           |           | (LMRA +8.0% Spike-and-Fade)                  |                                   |
-| #05 |  36  | T+45:00   | SCHEDULED | Vaultline profit jumps 18%, dividend raised. | [CALENDAR] Vaultline Earnings     |
+| #05 |  36  | T+22:30   | SCHEDULED | Vaultline profit jumps 18%, dividend raised. | Vaultline Earnings                |
 |     |      |           |           | (VLTN +4.5%, BRKW +1.0%)                     | Forecast: Profit expected flat    |
-| #06 |  42  | T+52:30   | SURPRISE  | Lumora Labs denies takeover approach.        | Lumora Corporate Statement        |
+| #06 |  42  | T+26:15   | SURPRISE  | Lumora Labs denies takeover approach.        | Lumora Corporate Statement        |
 |     |      |           |           | (LMRA -6.0%)                                 |                                   |
-| #07 |  50  | T+62:30   | SURPRISE  | Oil Producers' Alliance cuts output sharply. | Oil Alliance Supply Decision      |
+| #07 |  50  | T+31:15   | SURPRISE  | Oil Producers' Alliance cuts output sharply. | Oil Alliance Supply Decision      |
 |     |      |           |           | (TAVR +4.5%, AERV -3.0%, GRFD -1.0%)         |                                   |
-| #08 |  56  | T+70:00   | SURPRISE  | Broker upgrades Brickwell to "Strong Buy".   | Brokerage Equity Research         |
+| #08 |  56  | T+35:00   | SURPRISE  | Broker upgrades Brickwell to "Strong Buy".   | Brokerage Equity Research         |
 |     |      |           |           | (BRKW +3.5% Spike-and-Fade)                  |                                   |
-| #09 |  64  | T+80:00   | SCHEDULED | MRB raises interest rates by 0.50% shock.    | [CALENDAR] MRB Rate Decision      |
+| #09 |  64  | T+40:00   | SCHEDULED | MRB raises interest rates by 0.50% shock.    | MRB Rate Decision                 |
 |     |      |           |           | (VLTN +3.0%, BRKW -3.5%, LMRA -2.5%)         | Forecast: Rates expected unch.    |
-| #10 |  69  | T+86:15   | SURPRISE  | Greenfield Foods recalls snack line.         | Consumer Product Safety Notice    |
+| #10 |  69  | T+43:07   | SURPRISE  | Greenfield Foods recalls snack line.         | Consumer Product Safety Notice    |
 |     |      |           |           | (GRFD -5.0%)                                 |                                   |
-| #11 |  76  | T+95:00   | SURPRISE  | Global markets rally on trade talks.          | International Trade Summit        |
+| #11 |  76  | T+47:30   | SURPRISE  | Global markets rally on trade talks.          | International Trade Summit        |
 |     |      |           |           | (Market-wide rally: all 6 stocks gain)       |                                   |
-| #12 |  83  | T+103:45  | SURPRISE  | Government proposes energy windfall tax.     | Energy Fiscal Policy Leak         |
+| #12 |  83  | T+51:52   | SURPRISE  | Government proposes energy windfall tax.     | Energy Fiscal Policy Leak         |
 |     |      |           |           | (TAVR -6.0%)                                 |                                   |
-| #13 |  88  | T+110:00  | SURPRISE  | Oil Alliance reverses output cut; oil falls. | Alliance Policy Reversal          |
+| #13 |  88  | T+55:00   | SURPRISE  | Oil Alliance reverses output cut; oil falls. | Alliance Policy Reversal          |
 |     |      |           |           | (TAVR -3.5%, AERV +2.5%)                     |                                   |
-| #14 |  92  | T+115:00  | SURPRISE  | Regulator opens probe into Vaultline lending.| Financial Conduct Inquiry         |
+| #14 |  92  | T+57:30   | SURPRISE  | Regulator opens probe into Vaultline lending.| Financial Conduct Inquiry         |
 |     |      |           |           | (VLTN -5.5%)                                 |                                   |
 | R1  | Opt. | Manual    | RESERVE   | Retail sales rebound strongly.               | Reserve 1 (GRFD +2%, BRKW +2%)    |
 | R2  | Opt. | Manual    | RESERVE   | MRB signals patience on rates.               | Reserve 2 (BRKW +3%, LMRA +3%)    |
 +=======================================================================================================================+
 ```
 
-### Countdown & Approaching Event Alert System
-The frontend news ticker automatically evaluates the distance to the next upcoming scheduled calendar release:
-- **5-Minute Warning Banner (Yellow)**: Activated when a scheduled event is $\le 300$ seconds away ($\le 4$ ticks). Displays the event title and published forecast.
-- **1-Minute Warning Banner (Pulsing Red)**: Activated when a scheduled event is $\le 75$ seconds away ($\le 1$ tick). Emits an urgent high-visibility warning to prompt portfolio positioning.
+### Direct Breaking News Pop-Up Modal
+To maintain realistic trading urgency without spoiling market events beforehand:
+- **No Spoiler Previews**: Upcoming events are not pre-announced with countdown warnings or calendar lists.
+- **Direct Pop-Up**: The instant a headline crosses the wire (at scheduled ticks or reserve trigger), a high-visibility **Breaking News Pop-Up Modal** appears directly on the trader's screen with full headline details, topic, and a one-click `"Trade Now →"` action.
+- **Clean Headline Feed**: All distracting `"RELEASED"` / `"NOT RELEASED"` / `"UPCOMING"` status tags have been eliminated.
 
 ---
 
@@ -311,7 +312,7 @@ The Admin Portal (`/admin`) provides full oversight and controls for tournament 
   - `Pause Game`: Freezes the simulation clock without losing time.
   - `Resume Game`: Smoothly shifts `start_time` by elapsed pause duration to resume without missing ticks.
   - `Restart Game`: Comprehensive tournament reset. Resets all 25 team wallets to ₡10,000, wipes all orders/fills/holdings, clears portfolio snapshots, and arms all 14 headlines for the next batch of participants.
-  - `Test Mode Toggle`: Switches between 75-second ticks and 1-second ticks for rapid rehearsals.
+  - `Test Mode Toggle`: Switches between 37.5-second ticks (1-hour contest) and 1-second ticks for rapid rehearsals.
 - **Manual Reserve Headline Injector**: Trigger Reserve Event 1 (Retail Sales) or Reserve Event 2 (MRB Guidance) on-demand to test participant responsiveness during unexpected lulls.
 - **Prep-Time Fictional News Generator**: Authoring studio with category filters (Macro, Company, Policy) generating non-predictive Meridia headline templates with suggested sensitivity drivers for organizer review prior to competition lock.
 - **Full Team Monitoring & Order Stream**: Real-time table displaying all 25 teams, active socket connections, portfolio values, trade counts, eligibility flags, and a live audit trail of all actions.
@@ -528,7 +529,7 @@ All team passwords follow the strict formula `sprint` + two-digit team number:
 - `POST /admin/game/pause` — Pause simulation clock.
 - `POST /admin/game/resume` — Resume simulation clock.
 - `POST /admin/game/restart` — Reset all 25 teams, wallets, orders, holdings, and news.
-- `POST /admin/game/test-mode` — Toggle 1-second vs 75-second tick duration.
+- `POST /admin/game/test-mode` — Toggle 1-second vs 37.5-second tick duration.
 - `GET /admin/leaderboard` — Full ranked standings across all 25 teams.
 - `GET /admin/orders` — Global order stream across all participants.
 - `GET /admin/audit` — Immutable chronological audit logs.
@@ -579,11 +580,11 @@ pytest tests/test_simulation.py -v
 
 2. **Event Day Opening (T minus 15 Minutes)**:
    - Organizers log in to `/admin` using `ADMIN` / `admin123`.
-   - Ensure Test Mode is **OFF** (Tick duration shows `75s`).
+   - Ensure Test Mode is **OFF** (Tick duration shows `37.5s`).
    - Project the Admin Dashboard onto the main event stage screen.
    - Instruct teams to log in at their trading terminals. Verify team connections in the admin overview.
 
-3. **Event Execution (T = 0 to 120 Minutes)**:
+3. **Event Execution (T = 0 to 60 Minutes)**:
    - Click **▶ Start Game** on the Admin Dashboard.
    - The simulation automatically advances through Tick 0 to Tick 96.
    - Breaking news and warnings will flash on participant screens automatically.

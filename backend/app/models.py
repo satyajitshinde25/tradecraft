@@ -59,7 +59,7 @@ class Game(Base):
     paused_at = Column(DateTime(timezone=True), nullable=True)
     admin_session_token = Column(String, nullable=True)
     is_test_mode = Column(Boolean, nullable=False, default=False)
-    tick_seconds = Column(Integer, nullable=False, default=75)
+    tick_seconds = Column(Float, nullable=False, default=37.5)
     starting_balance = Column(Float, nullable=False, default=10000.00)
     max_trades = Column(Integer, nullable=False, default=22)
     buy_limit_percent = Column(Float, nullable=False, default=35.0)
