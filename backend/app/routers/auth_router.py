@@ -26,9 +26,12 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     Authenticate a team or admin.
     Returns a JWT token on success.
     """
-    # Check for admin login
-    if request.team_id.upper() == "ADMIN":
-        if request.password == settings.ADMIN_PASSWORD:
+    cleaned_id = request.team_id.strip()
+    cleaned_password = request.password.strip()
+
+    # Check for admin login (case-insensitive)
+    if cleaned_id.upper() == "ADMIN":
+        if request.password == settings.ADMIN_PASSWORD or cleaned_password == settings.ADMIN_PASSWORD:
             import uuid
             new_token = str(uuid.uuid4())
             token = create_token({"role": "admin", "sub": "ADMIN", "session": new_token})
@@ -53,10 +56,17 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
                 detail="Invalid credentials",
             )
 
-    # Team login
+    # Team login with flexible formatting (e.g. "team-1", "team 1", "team1", "TEAM-01")
+    import re
+    team_code = cleaned_id.upper()
+    match = re.match(r"^TEAM[-_\s]?(\d+)$", team_code)
+    if match:
+        num = int(match.group(1))
+        team_code = f"TEAM-{num:02d}"
+
     team = (
         db.query(Team)
-        .filter(Team.team_code == request.team_id.upper())
+        .filter(Team.team_code == team_code)
         .first()
     )
 
@@ -94,8 +104,10 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
             credential.locked_until = None
             credential.failed_attempts = 0
 
-    # Verify password
-    if not verify_password(request.password, credential.password_hash):
+    # Verify password (test both raw and trimmed)
+    password_ok = verify_password(request.password, credential.password_hash) or \
+                  verify_password(cleaned_password, credential.password_hash)
+    if not password_ok:
         credential.failed_attempts += 1
 
         # Lock after 5 failures

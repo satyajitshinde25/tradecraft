@@ -34,108 +34,137 @@ class TradingError(Exception):
         super().__init__(message)
 
 
+import threading
+
+_order_process_lock = threading.Lock()
+
+
 def process_pending_orders(db: Session, game: Game, current_tick: int) -> int:
     """
     Process any PENDING orders whose fill_tick has arrived (fill_tick <= current_tick).
     Executes fills at the official precomputed price of the fill tick.
     Returns the count of orders processed.
     """
-    pending_orders = (
-        db.query(Order)
-        .filter(
-            Order.game_id == game.id,
-            Order.status == OrderStatus.PENDING.value,
-            Order.fill_tick <= current_tick,
-        )
-        .order_by(Order.submitted_at)
-        .all()
-    )
-
-    processed_count = 0
-    for order in pending_orders:
-        company = db.query(Company).filter(Company.id == order.company_id).first()
-        wallet = db.query(TeamWallet).filter(TeamWallet.team_id == order.team_id).with_for_update().first()
-        holding = (
-            db.query(Holding)
-            .filter(Holding.team_id == order.team_id, Holding.company_id == order.company_id)
-            .with_for_update()
-            .first()
+    with _order_process_lock:
+        pending_orders = (
+            db.query(Order)
+            .filter(
+                Order.game_id == game.id,
+                Order.status == OrderStatus.PENDING.value,
+                Order.fill_tick <= current_tick,
+            )
+            .order_by(Order.submitted_at)
+            .all()
         )
 
-        fill_price = get_price_at_tick(db, game, order.company_id, order.fill_tick)
-        if fill_price is None:
-            continue
+        if not pending_orders:
+            return 0
 
-        actual_gross = round(fill_price * order.quantity, 2)
-        actual_fee = round(actual_gross * (game.trade_fee_percent / 100), 2)
+        processed_count = 0
+        holdings_cache: dict[tuple[str, str], Holding] = {}
 
-        if order.side == "BUY":
-            actual_total = round(actual_gross + actual_fee, 2)
-            # Cash was reserved at estimated total cost upon submission
-            # Reconcile difference with actual fill price
-            reserved_total = order.net_value or actual_total
-            cash_adjustment = reserved_total - actual_total
-            if wallet:
-                wallet.cash_balance = round(max(0.0, wallet.cash_balance + cash_adjustment), 2)
+        for order in pending_orders:
+            # Skip if already filled by another call
+            if order.status != OrderStatus.PENDING.value:
+                continue
 
-            # Update holding
-            if holding:
-                old_total = holding.average_cost * holding.quantity
-                new_qty = holding.quantity + order.quantity
-                new_total = old_total + actual_gross
-                holding.quantity = new_qty
-                holding.average_cost = round(new_total / new_qty, 2) if new_qty > 0 else fill_price
+            company = db.query(Company).filter(Company.id == order.company_id).first()
+            wallet = db.query(TeamWallet).filter(TeamWallet.team_id == order.team_id).first()
+
+            cache_key = (order.team_id, order.company_id)
+            if cache_key in holdings_cache:
+                holding = holdings_cache[cache_key]
             else:
-                new_holding = Holding(
-                    team_id=order.team_id,
-                    company_id=order.company_id,
-                    quantity=order.quantity,
-                    average_cost=fill_price,
+                holding = (
+                    db.query(Holding)
+                    .filter(Holding.team_id == order.team_id, Holding.company_id == order.company_id)
+                    .first()
                 )
-                db.add(new_holding)
 
-            order.net_value = actual_total
+            fill_price = get_price_at_tick(db, game, order.company_id, order.fill_tick)
+            if fill_price is None:
+                continue
 
-        elif order.side == "SELL":
-            actual_proceeds = round(actual_gross - actual_fee, 2)
-            if wallet:
-                wallet.cash_balance = round(wallet.cash_balance + actual_proceeds, 2)
+            actual_gross = round(fill_price * order.quantity, 2)
+            actual_fee = round(actual_gross * (game.trade_fee_percent / 100), 2)
 
-            if holding and holding.quantity == 0:
-                holding.average_cost = 0.0
+            if order.side == "BUY":
+                actual_total = round(actual_gross + actual_fee, 2)
+                # Cash was reserved at estimated total cost upon submission
+                # Reconcile difference with actual fill price
+                reserved_total = order.net_value or actual_total
+                cash_adjustment = reserved_total - actual_total
+                if wallet:
+                    wallet.cash_balance = round(max(0.0, wallet.cash_balance + cash_adjustment), 2)
 
-            order.net_value = actual_proceeds
+                # Update or create holding
+                if holding:
+                    old_total = holding.average_cost * holding.quantity
+                    new_qty = holding.quantity + order.quantity
+                    new_total = old_total + actual_gross
+                    holding.quantity = new_qty
+                    holding.average_cost = round(new_total / new_qty, 2) if new_qty > 0 else fill_price
+                else:
+                    holding = Holding(
+                        team_id=order.team_id,
+                        company_id=order.company_id,
+                        quantity=order.quantity,
+                        average_cost=fill_price,
+                    )
+                    db.add(holding)
+                    db.flush()
 
-        order.status = OrderStatus.FILLED.value
-        order.fill_price = fill_price
-        order.gross_value = actual_gross
-        order.fee = actual_fee
+                holdings_cache[cache_key] = holding
+                order.net_value = actual_total
 
-        fill = OrderFill(
-            order_id=order.id,
-            fill_tick=order.fill_tick,
-            fill_price=fill_price,
-            quantity=order.quantity,
-            fee=actual_fee,
-            filled_at=datetime.now(timezone.utc),
-        )
-        db.add(fill)
+            elif order.side == "SELL":
+                actual_proceeds = round(actual_gross - actual_fee, 2)
+                if wallet:
+                    wallet.cash_balance = round(wallet.cash_balance + actual_proceeds, 2)
 
-        ticker = company.ticker if company else "STOCK"
-        log_event(
-            db, "ORDER_FILLED",
-            game_id=game.id,
-            team_id=order.team_id,
-            tick=order.fill_tick,
-            order_id=order.id,
-            message=f"{order.side} {order.quantity} {ticker} filled at Tick {order.fill_tick} @ {fill_price:.2f} V-Coins",
-        )
-        processed_count += 1
+                if holding:
+                    holding.quantity = max(0, holding.quantity - order.quantity)
+                    if holding.quantity == 0:
+                        holding.average_cost = 0.0
+                    holdings_cache[cache_key] = holding
 
-    if processed_count > 0:
-        db.commit()
+                order.net_value = actual_proceeds
 
-    return processed_count
+            order.status = OrderStatus.FILLED.value
+            order.fill_price = fill_price
+            order.gross_value = actual_gross
+            order.fee = actual_fee
+
+            fill = OrderFill(
+                order_id=order.id,
+                fill_tick=order.fill_tick,
+                fill_price=fill_price,
+                quantity=order.quantity,
+                fee=actual_fee,
+                filled_at=datetime.now(timezone.utc),
+            )
+            db.add(fill)
+
+            ticker = company.ticker if company else "STOCK"
+            log_event(
+                db, "ORDER_FILLED",
+                game_id=game.id,
+                team_id=order.team_id,
+                tick=order.fill_tick,
+                order_id=order.id,
+                message=f"{order.side} {order.quantity} {ticker} filled at Tick {order.fill_tick} @ {fill_price:.2f} V-Coins",
+            )
+            processed_count += 1
+
+        if processed_count > 0:
+            try:
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                print(f"[Orders] Error committing pending order fills: {e}")
+                raise
+
+        return processed_count
 
 
 def validate_and_execute_buy(

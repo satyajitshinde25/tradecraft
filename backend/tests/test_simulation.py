@@ -331,6 +331,29 @@ def test_true_next_tick_execution(db_session):
     assert holding.quantity == 10
     assert holding.average_cost == tick1_price
 
+    # Regression test: multiple pending orders for the SAME team and company in the SAME batch
+    # This previously triggered: sqlite3.IntegrityError: UNIQUE constraint failed: holdings.team_id, holdings.company_id
+    order_a = Order(
+        game_id=game.id, team_id=team.id, company_id=aerv.id,
+        side="BUY", quantity=4, submitted_tick=1,
+        submitted_at=datetime.now(timezone.utc), status=OrderStatus.PENDING.value,
+        requested_price=tick1_price, fill_tick=2, fee=1.0, gross_value=168.0, net_value=169.0,
+    )
+    order_b = Order(
+        game_id=game.id, team_id=team.id, company_id=aerv.id,
+        side="BUY", quantity=6, submitted_tick=1,
+        submitted_at=datetime.now(timezone.utc), status=OrderStatus.PENDING.value,
+        requested_price=tick1_price, fill_tick=2, fee=1.0, gross_value=252.0, net_value=253.0,
+    )
+    session.add(order_a)
+    session.add(order_b)
+    session.commit()
+
+    processed_2 = process_pending_orders(session, game, current_tick=2)
+    assert processed_2 == 2
+    session.refresh(holding)
+    assert holding.quantity == 20  # 10 + 4 + 6 = 20
+
 
 # ── TEST 7: Market Close at Tick 96 ───────────────────────────────
 
