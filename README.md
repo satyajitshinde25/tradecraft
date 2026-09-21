@@ -173,64 +173,44 @@ Impact
 
 1. **`STEP` (Permanent Structural Revaluation)**:
    - *Progression*: `[20%, 60%, 90%, 100%, 100%, 100%]`
-   - *Application*: Permanent changes in cash flows, taxation, or official monetary policy (e.g., MRB Rate Hikes, Windfall Taxes, Earnings Beats).
+   - *Application*: Permanent fundamental changes in company valuation, statutory fiscal policy, or official central bank interest rate decisions.
 2. **`SPIKE-AND-FADE` (Speculative Sentiment / Overreaction)**:
    - *Progression*: `[30%, 80%, 120%, 100%, 80%, 60%]`
-   - *Application*: Unconfirmed rumors and analyst upgrades that spark initial retail euphoria followed by institutional mean-reversion (e.g., Takeover Rumors for Lumora, Brokerage "Strong Buy" ratings).
+   - *Application*: Unconfirmed market rumors, speculative media reports, and analyst ratings upgrades that trigger initial retail overreaction followed by institutional mean-reversion.
 3. **`SLOW-BURN` (Gradual Macro / Industry Diffusion)**:
    - *Progression*: `[10%, 25%, 45%, 65%, 85%, 100%]`
-   - *Application*: Diffuse economic indicators and broad market sentiment that seep into corporate earnings over extended cycles (e.g., Consumer Confidence erosion, Trade Talk breakthroughs).
+   - *Application*: Broad macroeconomic indicators, multi-quarter consumer sentiment shifts, and international trade developments that seep across equity sectors over multiple ticks.
 
 ---
 
-## 📰 The News System (Meridia Business Wire & Economic Calendar)
+## 📰 The News System (Meridia Business Wire & Live Market Intelligence)
 
-The news system is divided into **Scheduled Economic Events** (published on the public calendar with consensus forecasts) and **Surprise Breaking News** (unannounced releases that hit the tape instantly).
+To simulate the high-stakes uncertainty of real trading floors, **the competition event schedule, release timing, and price targets remain strictly confidential**. Participants never receive advance warning of when headlines will drop or how assets will move.
 
-### Canonical 14-Event Master Schedule (1-Hour Session, 37.5s/Tick)
+### 1. Dynamic News Delivery Engine
+Headlines cross the Meridia Business Wire live as the session unfolds, forcing traders to synthesize information under real-time market pressure:
 
-```
-+=======================================================================================================================+
-| EVT | TICK | SIM TIME  | TYPE      | HEADLINE SUMMARY                             | CALENDAR TITLE / TOPIC            |
-+=======================================================================================================================+
-| #01 |  10  | T+06:15   | SURPRISE  | Oil prices edge higher as fuel inventories   | Energy Inventory Report           |
-|     |      |           |           | fall. (TAVR +2.5%, AERV -1.5%)               |                                   |
-| #02 |  15  | T+09:22   | SURPRISE  | Aerovia signs overseas code-share deal.      | Carrier Partnership Announcement  |
-|     |      |           |           | (AERV +4.0%)                                 |                                   |
-| #03 |  24  | T+15:00   | SCHEDULED | Consumer confidence falls to 18-month low.   | Consumer Confidence               |
-|     |      |           |           | (GRFD -1.5%, BRKW -2.5%, AERV -2.0%)         | Forecast: Slight rise expected    |
-| #04 |  29  | T+18:07   | SURPRISE  | Unconfirmed takeover bid for Lumora Labs.    | Tech Sector Acquisition Rumours   |
-|     |      |           |           | (LMRA +8.0% Spike-and-Fade)                  |                                   |
-| #05 |  36  | T+22:30   | SCHEDULED | Vaultline profit jumps 18%, dividend raised. | Vaultline Earnings                |
-|     |      |           |           | (VLTN +4.5%, BRKW +1.0%)                     | Forecast: Profit expected flat    |
-| #06 |  42  | T+26:15   | SURPRISE  | Lumora Labs denies takeover approach.        | Lumora Corporate Statement        |
-|     |      |           |           | (LMRA -6.0%)                                 |                                   |
-| #07 |  50  | T+31:15   | SURPRISE  | Oil Producers' Alliance cuts output sharply. | Oil Alliance Supply Decision      |
-|     |      |           |           | (TAVR +4.5%, AERV -3.0%, GRFD -1.0%)         |                                   |
-| #08 |  56  | T+35:00   | SURPRISE  | Broker upgrades Brickwell to "Strong Buy".   | Brokerage Equity Research         |
-|     |      |           |           | (BRKW +3.5% Spike-and-Fade)                  |                                   |
-| #09 |  64  | T+40:00   | SCHEDULED | MRB raises interest rates by 0.50% shock.    | MRB Rate Decision                 |
-|     |      |           |           | (VLTN +3.0%, BRKW -3.5%, LMRA -2.5%)         | Forecast: Rates expected unch.    |
-| #10 |  69  | T+43:07   | SURPRISE  | Greenfield Foods recalls snack line.         | Consumer Product Safety Notice    |
-|     |      |           |           | (GRFD -5.0%)                                 |                                   |
-| #11 |  76  | T+47:30   | SURPRISE  | Global markets rally on trade talks.          | International Trade Summit        |
-|     |      |           |           | (Market-wide rally: all 6 stocks gain)       |                                   |
-| #12 |  83  | T+51:52   | SURPRISE  | Government proposes energy windfall tax.     | Energy Fiscal Policy Leak         |
-|     |      |           |           | (TAVR -6.0%)                                 |                                   |
-| #13 |  88  | T+55:00   | SURPRISE  | Oil Alliance reverses output cut; oil falls. | Alliance Policy Reversal          |
-|     |      |           |           | (TAVR -3.5%, AERV +2.5%)                     |                                   |
-| #14 |  92  | T+57:30   | SURPRISE  | Regulator opens probe into Vaultline lending.| Financial Conduct Inquiry         |
-|     |      |           |           | (VLTN -5.5%)                                 |                                   |
-| R1  | Opt. | Manual    | RESERVE   | Retail sales rebound strongly.               | Reserve 1 (GRFD +2%, BRKW +2%)    |
-| R2  | Opt. | Manual    | RESERVE   | MRB signals patience on rates.               | Reserve 2 (BRKW +3%, LMRA +3%)    |
-+=======================================================================================================================+
-```
+- **Surprise Breaking News**:
+  - High-impact unscheduled bulletins encompassing energy supply shocks, regulatory investigations, corporate governance statements, M&A rumors, and product recalls.
+  - Deliver immediate volatility across affected equities and cross-sector peers.
+- **Scheduled Macroeconomic Releases**:
+  - Official macroeconomic indicators (e.g., central bank policy rate decisions, consumer confidence indices, major corporate earnings).
+  - While consensus market expectations exist, actual reported data deviates, requiring traders to interpret the delta between forecast and reality.
+- **Manual Organizer Reserves**:
+  - Tournament administrators have on-demand reserve headlines ready in the control center to test team responsiveness during unexpected trading lulls.
 
-### Direct Breaking News Pop-Up Modal
-To maintain realistic trading urgency without spoiling market events beforehand:
-- **No Spoiler Previews**: Upcoming events are not pre-announced with countdown warnings or calendar lists.
-- **Direct Pop-Up**: The instant a headline crosses the wire (at scheduled ticks or reserve trigger), a high-visibility **Breaking News Pop-Up Modal** appears directly on the trader's screen with full headline details, topic, and a one-click `"Trade Now →"` action.
-- **Clean Headline Feed**: All distracting `"RELEASED"` / `"NOT RELEASED"` / `"UPCOMING"` status tags have been eliminated.
+### 2. Multi-Tick Reaction Diffusion
+When a headline crosses the tape, market prices do not instantaneously jump in a single tick. Instead, price adjustments unfold across a **6-tick reaction horizon** governed by one of three mathematical curves (`STEP`, `SPIKE-AND-FADE`, `SLOW-BURN`):
+- **Structural Shifts**: Assets establish a new permanent price level.
+- **Speculative Overreactions**: High-volume retail rushes overshoot fundamentals before institutional profit-taking and mean-reversion settle the price.
+- **Gradual Diffusion**: Complex macroeconomic shifts seep through supply chains and corporate balance sheets over extended periods.
+
+### 3. Direct Breaking News Pop-Up Modal
+To maintain realistic trading floor urgency without spoiling upcoming events:
+- **Zero Advance Spoilers**: Upcoming events are never pre-announced with countdown timers or upcoming lists. Every headline hits the tape live.
+- **Direct Screen Takeover**: The instant a headline crosses the wire, a high-visibility **Breaking News Pop-Up Modal** commands the participant's screen with full context, sector topic, and a one-click `"Trade Now →"` action.
+- **Searchable Historical Archive**: A slide-out **News History Drawer** allows traders to search and review all previously released bulletins without revealing future developments.
+- **Clean Interface**: Distracting status tags (`"RELEASED"`, `"UPCOMING"`) have been removed for an uncluttered institutional terminal aesthetic.
 
 ---
 

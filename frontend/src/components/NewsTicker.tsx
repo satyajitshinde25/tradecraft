@@ -134,7 +134,7 @@ export default function NewsTicker({ news, currentTick, tickSeconds = 37.5 }: Pr
             </div>
           ) : (
             <div className="wire-empty">
-              <span>Awaiting market opening headlines... Official news begins at Tick 10.</span>
+              <span>Awaiting market opening headlines... Breaking news will cross the wire live as events unfold.</span>
             </div>
           )}
         </div>

@@ -188,7 +188,7 @@ The Participant Dashboard (`/dashboard`) provides a professional, terminal-grade
   - No upcoming event countdowns or pre-announced warnings that spoil events.
   - The instant a news headline lands on the wire (at predefined or reserve ticks), a **high-visibility pop-up modal directly appears** on the participant's screen:
     - Flashing breaking news badge (`🔴 BREAKING NEWS — MERIDIA WIRE`).
-    - Simulation Tick and Time offset (e.g., `Tick 24 • T+30:00`).
+    - Simulation Tick and elapsed session time.
     - Topic / Calendar title.
     - Large, high-contrast headline text.
     - Factual, non-predictive background summary.

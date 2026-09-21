@@ -45,15 +45,5 @@ def get_news(
             )
             for evt in released
         ],
-        upcoming_scheduled=[
-            UpcomingScheduledEvent(
-                event_number=evt.event_number,
-                release_tick=evt.release_tick,
-                calendar_title=evt.calendar_title or f"Scheduled Event {evt.event_number}",
-                headline=f"📅 {evt.calendar_title or 'Scheduled Event'}",
-                time_offset=evt.time_offset,
-                forecast=evt.forecast,
-            )
-            for evt in upcoming
-        ],
+        upcoming_scheduled=[],
     )
