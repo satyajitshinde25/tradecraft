@@ -184,21 +184,105 @@ export async function adminGetAudit() {
 }
 
 // ── WebSocket ──
+export interface ManagedWebSocket {
+  close: () => void;
+}
+
 export function createMarketWebSocket(
   onMessage: (data: any) => void,
-  onClose?: () => void,
-): WebSocket {
-  const ws = new WebSocket(`${WS_BASE}/ws/market`);
-  ws.onmessage = (event) => {
+  onStatusChange?: (isReconnecting: boolean) => void,
+): ManagedWebSocket {
+  let ws: WebSocket | null = null;
+  let isClosedIntentionally = false;
+  let reconnectTimer: any = null;
+  let healthCheckTimer: any = null;
+  let failedAttempts = 0;
+
+  const checkHealthAndNotify = async () => {
+    if (isClosedIntentionally) return;
     try {
-      const data = JSON.parse(event.data);
-      onMessage(data);
-    } catch (e) {
-      console.error('WS parse error:', e);
+      // First check if the backend is genuinely unreachable
+      const res = await fetch(`${API_BASE}/health`, { method: 'GET', signal: AbortSignal.timeout(2000) });
+      if (!res.ok) {
+        if (onStatusChange) onStatusChange(true);
+      } else {
+        // Backend HTTP is alive; don't show reconnecting immediately
+        if (failedAttempts > 2 && onStatusChange) {
+          onStatusChange(true);
+        }
+      }
+    } catch {
+      // Backend unreachable, genuinely disconnected
+      if (onStatusChange) onStatusChange(true);
     }
   };
-  ws.onclose = () => {
-    if (onClose) onClose();
+
+  const connect = () => {
+    if (isClosedIntentionally) return;
+
+    try {
+      ws = new WebSocket(`${WS_BASE}/ws/market`);
+
+      ws.onopen = () => {
+        failedAttempts = 0;
+        if (healthCheckTimer) {
+          clearTimeout(healthCheckTimer);
+          healthCheckTimer = null;
+        }
+        if (onStatusChange) onStatusChange(false);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          onMessage(data);
+          if (onStatusChange) onStatusChange(false);
+        } catch (e) {
+          console.error('WS parse error:', e);
+        }
+      };
+
+      ws.onerror = () => {
+        // Schedule verification check before displaying any reconnecting badge
+        if (!healthCheckTimer && !isClosedIntentionally) {
+          healthCheckTimer = setTimeout(checkHealthAndNotify, 2500);
+        }
+      };
+
+      ws.onclose = () => {
+        if (isClosedIntentionally) return;
+        failedAttempts++;
+        if (!healthCheckTimer) {
+          healthCheckTimer = setTimeout(checkHealthAndNotify, 2500);
+        }
+        // Auto-reconnect with backoff
+        const delay = Math.min(1000 * Math.pow(1.4, failedAttempts), 5000);
+        reconnectTimer = setTimeout(() => {
+          if (!isClosedIntentionally) connect();
+        }, delay);
+      };
+    } catch {
+      if (!isClosedIntentionally) {
+        checkHealthAndNotify();
+        reconnectTimer = setTimeout(connect, 3000);
+      }
+    }
   };
-  return ws;
+
+  connect();
+
+  return {
+    close: () => {
+      isClosedIntentionally = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (healthCheckTimer) clearTimeout(healthCheckTimer);
+      if (ws) {
+        ws.onclose = null;
+        ws.onerror = null;
+        ws.close();
+      }
+      if (onStatusChange) onStatusChange(false);
+    },
+  };
 }
+

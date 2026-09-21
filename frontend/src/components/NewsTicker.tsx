@@ -1,6 +1,6 @@
-/* ── Meridia Business Wire & Economic Calendar Component ── */
-import { useState, useMemo } from 'react';
-import type { NewsResponse } from '../types';
+/* ── Meridia Business Wire & Direct News Pop-Up Component ── */
+import { useState, useMemo, useEffect, useRef } from 'react';
+import type { NewsResponse, NewsEvent } from '../types';
 import './NewsTicker.css';
 
 interface Props {
@@ -10,8 +10,8 @@ interface Props {
 
 export default function NewsTicker({ news, currentTick }: Props) {
   const [showHistory, setShowHistory] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [popupEvent, setPopupEvent] = useState<NewsEvent | null>(null);
 
   // Format tick to simulation time (75s per tick: Tick 0 = 00:00:00, Tick 64 = 01:20:00)
   const formatSimulationTime = (tick: number) => {
@@ -23,23 +23,21 @@ export default function NewsTicker({ news, currentTick }: Props) {
   };
 
   const latestEvent = news.released_events.length > 0 ? news.released_events[0] : null;
+  const initialLoadRef = useRef(true);
+  const lastSeenEventRef = useRef<number>(-1);
 
-  // Next scheduled event approaching
-  const nextScheduled = useMemo(() => {
-    const upcoming = news.upcoming_scheduled.filter(e => e.release_tick > currentTick);
-    if (upcoming.length === 0) return null;
-    const sorted = [...upcoming].sort((a, b) => a.release_tick - b.release_tick);
-    const next = sorted[0];
-    const ticksAway = next.release_tick - currentTick;
-    const secondsAway = ticksAway * 75;
-    return {
-      ...next,
-      ticksAway,
-      secondsAway,
-      isClose: secondsAway <= 300, // within 5 simulation minutes (4 ticks)
-      isImminent: secondsAway <= 75, // within 1 tick (approx 1 minute)
-    };
-  }, [news.upcoming_scheduled, currentTick]);
+  // Direct Pop-Up: whenever a new headline lands, pop it up directly in front of the user
+  useEffect(() => {
+    if (latestEvent) {
+      if (initialLoadRef.current) {
+        initialLoadRef.current = false;
+        lastSeenEventRef.current = latestEvent.event_number;
+      } else if (lastSeenEventRef.current !== latestEvent.event_number) {
+        lastSeenEventRef.current = latestEvent.event_number;
+        setPopupEvent(latestEvent);
+      }
+    }
+  }, [latestEvent]);
 
   // Filtered news history
   const filteredHistory = useMemo(() => {
@@ -52,27 +50,41 @@ export default function NewsTicker({ news, currentTick }: Props) {
     );
   }, [news.released_events, searchQuery]);
 
-  // Economic Calendar schedule items
-  const scheduledSchedule = [
-    { number: 3, tick: 24, time: 'T+30:00', title: 'Consumer Confidence', forecast: 'Forecast: Slight rise expected' },
-    { number: 5, tick: 36, time: 'T+45:00', title: 'Vaultline Earnings', forecast: 'Forecast: Profit expected flat' },
-    { number: 9, tick: 64, time: 'T+80:00', title: 'MRB Rate Decision', forecast: 'Forecast: Rates expected unchanged' },
-  ];
-
   return (
     <div className="meridia-wire-container">
-      {/* ── Approaching Event Warning Banner (5m / 1m warning) ── */}
-      {nextScheduled && nextScheduled.isClose && (
-        <div className={`scheduled-alert-banner ${nextScheduled.isImminent ? 'alert-imminent' : 'alert-warning'} animate-pulse`}>
-          <div className="alert-badge">
-            {nextScheduled.isImminent ? '⚠️ 1 MINUTE WARNING' : '⏱ 5 MINUTE WARNING'}
-          </div>
-          <div className="alert-content">
-            <strong>NEXT SCHEDULED EVENT: {nextScheduled.calendar_title || nextScheduled.headline}</strong>
-            <span className="alert-forecast">{nextScheduled.forecast}</span>
-          </div>
-          <div className="alert-countdown mono">
-            Release: Tick {nextScheduled.release_tick} (~{Math.ceil(nextScheduled.secondsAway / 60)}m)
+      {/* ── Direct Breaking News Pop-Up Modal ── */}
+      {popupEvent && (
+        <div className="news-popup-overlay animate-fade-in" onClick={() => setPopupEvent(null)}>
+          <div className="news-popup-card" onClick={e => e.stopPropagation()}>
+            <div className="news-popup-header">
+              <div className="news-popup-brand">
+                <span className="live-dot" />
+                <span className="news-popup-title">BREAKING NEWS — MERIDIA WIRE</span>
+              </div>
+              <button className="btn btn-icon btn-outline" onClick={() => setPopupEvent(null)}>✕</button>
+            </div>
+            <div className="news-popup-body">
+              <div className="news-popup-meta mono">
+                <span>TICK {popupEvent.release_tick}</span>
+                <span>•</span>
+                <span>{formatSimulationTime(popupEvent.release_tick)}</span>
+                {popupEvent.calendar_title && (
+                  <>
+                    <span>•</span>
+                    <span className="news-popup-topic">{popupEvent.calendar_title}</span>
+                  </>
+                )}
+              </div>
+              <h2 className="news-popup-headline">{popupEvent.headline}</h2>
+              {popupEvent.description && (
+                <p className="news-popup-desc">{popupEvent.description}</p>
+              )}
+            </div>
+            <div className="news-popup-footer">
+              <button className="btn btn-buy" onClick={() => setPopupEvent(null)}>
+                Trade Now →
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -89,18 +101,11 @@ export default function NewsTicker({ news, currentTick }: Props) {
             <span className="wire-time">{formatSimulationTime(currentTick)}</span>
             <div className="wire-actions">
               <button
-                className={`btn btn-sm ${showCalendar ? 'btn-buy' : 'btn-outline'}`}
-                onClick={() => setShowCalendar(!showCalendar)}
-                title="View Economic Calendar"
-              >
-                📅 Calendar
-              </button>
-              <button
                 className={`btn btn-sm ${showHistory ? 'btn-buy' : 'btn-outline'}`}
                 onClick={() => setShowHistory(!showHistory)}
                 title="View News History"
               >
-                📰 History ({news.released_events.length})
+                📰 News History ({news.released_events.length})
               </button>
             </div>
           </div>
@@ -108,11 +113,12 @@ export default function NewsTicker({ news, currentTick }: Props) {
 
         <div className="wire-body">
           {latestEvent ? (
-            <div className="latest-headline-wrapper">
+            <div
+              className="latest-headline-wrapper clickable-headline"
+              onClick={() => setPopupEvent(latestEvent)}
+              title="Click to view full headline details"
+            >
               <div className="headline-badge-row">
-                <span className={`badge ${latestEvent.is_scheduled ? 'badge-blue' : 'badge-yellow'}`}>
-                  {latestEvent.is_scheduled ? '📅 SCHEDULED RELEASE' : '⚡ BREAKING NEWS'}
-                </span>
                 <span className="headline-tick mono">Tick {latestEvent.release_tick}</span>
                 {latestEvent.calendar_title && (
                   <span className="headline-topic">{latestEvent.calendar_title}</span>
@@ -127,47 +133,11 @@ export default function NewsTicker({ news, currentTick }: Props) {
             </div>
           ) : (
             <div className="wire-empty">
-              <span>Awaiting market opening headlines... Official release begins at Tick 10.</span>
+              <span>Awaiting market opening headlines... Official news begins at Tick 10.</span>
             </div>
           )}
         </div>
       </div>
-
-      {/* ── Economic Calendar Modal / Drawer ── */}
-      {showCalendar && (
-        <div className="calendar-drawer card animate-fade-in">
-          <div className="drawer-header">
-            <h3>📅 ECONOMIC CALENDAR (PUBLIC FORECASTS)</h3>
-            <button className="btn btn-icon btn-outline" onClick={() => setShowCalendar(false)}>✕</button>
-          </div>
-          <p className="calendar-info">
-            Public consensus forecasts are released before the market sprint. Outcomes fill strictly at the designated release ticks.
-          </p>
-          <div className="calendar-grid">
-            {scheduledSchedule.map(item => {
-              const isReleased = currentTick >= item.tick;
-              const releasedEvt = news.released_events.find(e => e.release_tick === item.tick);
-              return (
-                <div key={item.number} className={`calendar-card ${isReleased ? 'card-released' : 'card-upcoming'}`}>
-                  <div className="calendar-card-top">
-                    <span className="calendar-time mono">{item.time} (Tick {item.tick})</span>
-                    <span className={`badge ${isReleased ? 'badge-green' : 'badge-yellow'}`}>
-                      {isReleased ? 'RELEASED' : 'UPCOMING'}
-                    </span>
-                  </div>
-                  <h4 className="calendar-event-title">{item.title}</h4>
-                  <div className="calendar-forecast">{item.forecast}</div>
-                  {isReleased && releasedEvt && (
-                    <div className="calendar-actual">
-                      <span className="actual-tag">OUTCOME:</span> {releasedEvt.headline}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* ── News History Drawer ── */}
       {showHistory && (
@@ -190,11 +160,16 @@ export default function NewsTicker({ news, currentTick }: Props) {
               <p className="history-empty">No headlines match your search.</p>
             ) : (
               filteredHistory.map(evt => (
-                <div key={evt.event_number} className="history-item">
+                <div
+                  key={evt.event_number}
+                  className="history-item clickable-history-item"
+                  onClick={() => {
+                    setPopupEvent(evt);
+                    setShowHistory(false);
+                  }}
+                  title="Click to view details"
+                >
                   <div className="history-item-meta">
-                    <span className={`badge ${evt.is_scheduled ? 'badge-blue' : 'badge-yellow'}`}>
-                      {evt.is_scheduled ? 'SCHEDULED' : 'SURPRISE'}
-                    </span>
                     <span className="mono history-tick">Tick {evt.release_tick}</span>
                     <span className="mono history-time">{formatSimulationTime(evt.release_tick)}</span>
                     {evt.calendar_title && <span className="history-topic">{evt.calendar_title}</span>}

@@ -34,9 +34,9 @@ export default function Dashboard() {
   const [chartModal, setChartModal] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [countdown, setCountdown] = useState<number>(0);
-  const [connected, setConnected] = useState(true);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const fetchAllDataRef = useRef<() => void>(() => {});
 
-  const wsRef = useRef<WebSocket | null>(null);
   const intervalRef = useRef<number | null>(null);
   const teamCode = localStorage.getItem('ms_team_code') || '';
   const displayName = localStorage.getItem('ms_display_name') || '';
@@ -53,7 +53,7 @@ export default function Dashboard() {
       setNews(nw);
       setPortfolio(pf);
       setOrders(od.orders || []);
-      setConnected(true);
+      setIsReconnecting(false);
 
       // Fetch candles for all companies
       const tickers = (mk.prices || []).map((p: CompanyPrice) => p.ticker);
@@ -66,9 +66,10 @@ export default function Dashboard() {
       setCandles(candleMap);
     } catch (err) {
       console.error('Fetch error:', err);
-      setConnected(false);
     }
   }, []);
+
+  fetchAllDataRef.current = fetchAllData;
 
   // ── Initial load + polling ──
   useEffect(() => {
@@ -81,13 +82,13 @@ export default function Dashboard() {
 
   // ── WebSocket ──
   useEffect(() => {
-    const ws = createMarketWebSocket(
+    const managedWs = createMarketWebSocket(
       (data: WSMarketMessage) => {
         if (data.type === 'market_update') {
           setGameState(prev => {
             if (prev && prev.current_tick !== data.tick) {
               // Tick advanced! Refresh portfolio and orders to show filled orders
-              fetchAllData();
+              fetchAllDataRef.current();
             }
             return prev ? {
               ...prev,
@@ -99,27 +100,32 @@ export default function Dashboard() {
             } : prev;
           });
 
-          if (data.prices && market) {
-            setMarket(prev => prev ? {
-              ...prev,
-              tick: data.tick,
-              prices: prev.prices.map(p => {
-                const updated = data.prices.find(dp => dp.ticker === p.ticker);
-                return updated ? { ...p, price: updated.price, change: updated.change, change_percent: updated.change_percent } : p;
-              })
-            } : prev);
+          if (data.prices) {
+            setMarket(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                tick: data.tick,
+                prices: prev.prices.map(p => {
+                  const updated = data.prices?.find((dp: any) => dp.ticker === p.ticker);
+                  return updated ? { ...p, price: updated.price, change: updated.change, change_percent: updated.change_percent } : p;
+                }),
+              };
+            });
           }
-          setConnected(true);
+          setIsReconnecting(false);
         }
       },
-      () => setConnected(false),
+      (reconnecting: boolean) => {
+        setIsReconnecting(reconnecting);
+      },
     );
-    wsRef.current = ws;
 
     return () => {
-      ws.close();
+      managedWs.close();
     };
-  }, [fetchAllData, market]);
+  }, []);
+
 
   // ── Countdown timer ──
   useEffect(() => {
@@ -199,7 +205,7 @@ export default function Dashboard() {
                 ⏱ {countdown}s
               </span>
             )}
-            {!connected && (
+            {isReconnecting && (
               <span className="badge badge-red">⚡ Reconnecting...</span>
             )}
           </div>
