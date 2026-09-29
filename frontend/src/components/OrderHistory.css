@@ -1,28 +1,38 @@
 .order-history-card h3 {
-  font-size: 1rem;
-  color: var(--text-primary);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--gold-light);
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .oh-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .oh-count {
   font-size: 0.82rem;
-  color: var(--text-secondary);
+  color: var(--gold-light);
+  background: rgba(217, 180, 119, 0.12);
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-primary);
+  font-weight: 600;
 }
 
 .oh-empty {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   text-align: center;
-  padding: 20px;
+  padding: 24px;
 }
 
 .oh-table-wrapper {
-  max-height: 300px;
+  max-height: 320px;
   overflow-y: auto;
 }

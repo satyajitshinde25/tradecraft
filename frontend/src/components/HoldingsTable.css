@@ -1,27 +1,37 @@
 .holdings-card h3,
 .holdings-empty h3 {
-  font-size: 1rem;
-  margin-bottom: 14px;
-  color: var(--text-primary);
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--gold-light);
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .holdings-empty {
   text-align: center;
-  padding: 30px;
+  padding: 36px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
 }
 
 .holdings-empty p {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .h-ticker {
   font-family: var(--font-mono);
-  font-weight: 700;
+  font-weight: 800;
+  color: var(--gold-light);
   margin-right: 8px;
+  font-size: 0.95rem;
 }
 
 .h-name {
-  font-size: 0.78rem;
-  color: var(--text-muted);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
 }

@@ -1,8 +1,8 @@
 /* ── Meridia Business Wire & Direct News Pop-Up Styling ── */
 
 .meridia-wire-container {
-  padding: 0 24px;
-  margin-top: 16px;
+  padding: 0;
+  margin-top: 0;
 }
 
 /* ── Direct Breaking News Pop-Up Modal ── */
@@ -12,8 +12,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(6px);
+  background: rgba(3, 7, 10, 0.85);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,12 +22,12 @@
 }
 
 .news-popup-card {
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  border: 2px solid rgba(239, 68, 68, 0.6);
-  border-radius: 12px;
+  background: linear-gradient(180deg, #140d12 0%, #0c090c 100%);
+  border: 2px solid rgba(244, 63, 94, 0.6);
+  border-radius: 14px;
   width: 100%;
   max-width: 620px;
-  box-shadow: 0 10px 40px rgba(239, 68, 68, 0.25), 0 0 0 1px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 16px 50px rgba(244, 63, 94, 0.25), 0 0 25px rgba(217, 180, 119, 0.1);
   overflow: hidden;
   animation: popup-bounce 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -41,9 +41,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  background: rgba(239, 68, 68, 0.12);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 16px 22px;
+  background: rgba(244, 63, 94, 0.14);
+  border-bottom: 1px solid rgba(244, 63, 94, 0.3);
 }
 
 .news-popup-brand {
@@ -54,13 +54,14 @@
 
 .news-popup-title {
   font-weight: 800;
-  font-size: 0.9rem;
-  letter-spacing: 1px;
-  color: #fca5a5;
+  font-size: 0.92rem;
+  letter-spacing: 0.08em;
+  color: #fecdd3;
+  font-family: var(--font-mono);
 }
 
 .news-popup-body {
-  padding: 24px 24px 20px;
+  padding: 24px 26px 20px;
 }
 
 .news-popup-meta {
@@ -73,7 +74,8 @@
 }
 
 .news-popup-topic {
-  color: #93c5fd;
+  color: var(--gold-light);
+  font-weight: 600;
 }
 
 .news-popup-headline {
@@ -81,32 +83,34 @@
   font-weight: 800;
   line-height: 1.35;
   color: #f8fafc;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .news-popup-desc {
   font-size: 0.95rem;
-  color: #cbd5e1;
-  line-height: 1.55;
+  color: #c5beaf;
+  line-height: 1.6;
 }
 
 .news-popup-footer {
   display: flex;
   justify-content: flex-end;
-  padding: 14px 24px 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.2);
+  padding: 14px 26px 18px;
+  border-top: 1px solid rgba(217, 180, 119, 0.12);
+  background: rgba(0, 0, 0, 0.35);
 }
 
 /* ── LIVE — MERIDIA BUSINESS WIRE Card ── */
 .meridia-wire-box {
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-left: 4px solid #ef4444;
-  padding: 16px 20px;
+  background: rgba(12, 18, 24, 0.88);
+  border: 1px solid var(--border-primary);
+  border-left: 4px solid #f43f5e;
+  padding: 18px 22px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(10px);
 }
 
 .wire-header {
@@ -245,19 +249,21 @@
 }
 
 .history-item {
-  padding: 12px 14px;
-  border-radius: 6px;
-  background: rgba(15, 23, 42, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: rgba(10, 15, 20, 0.75);
+  border: 1px solid var(--border-primary);
+  transition: all 0.2s ease;
 }
 
 .clickable-history-item {
   cursor: pointer;
-  transition: background 0.15s ease;
 }
 
 .clickable-history-item:hover {
-  background: rgba(30, 41, 59, 0.7);
+  background: rgba(217, 180, 119, 0.08);
+  border-color: var(--border-secondary);
+  transform: translateX(2px);
 }
 
 .history-item-meta {

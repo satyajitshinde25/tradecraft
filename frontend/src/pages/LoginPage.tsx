@@ -1,4 +1,4 @@
-/* ── Login Page — Premium trading terminal entry ── */
+/* ── Login Page — User Provided Theme ── */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../api/client';
@@ -36,74 +36,85 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="login-page">
-      <div className="login-bg-grid" />
-      <div className="login-bg-glow" />
+    <main className="page">
+      <section className="visual" aria-label="Wall Street Arena visual"></section>
 
-      <div className="login-container animate-fade-in">
-        <div className="login-logo">
-          <div className="login-logo-icon">
-            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-              <path d="M8 28L14 18L20 22L26 12L32 16" stroke="url(#grad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-              <defs><linearGradient id="grad" x1="8" y1="28" x2="32" y2="12"><stop stopColor="#6366f1"/><stop offset="1" stopColor="#8b5cf6"/></linearGradient></defs>
-            </svg>
-          </div>
-          <h1>Market Sprint</h1>
-          <p className="login-subtitle">Fictional Markets Edition</p>
-        </div>
-
-        <form className="login-form" onSubmit={handleLogin}>
-          <div className="form-group">
-            <label htmlFor="team-id">Team ID</label>
-            <input
-              id="team-id"
-              className="input"
-              type="text"
-              placeholder="e.g., TEAM-01 or ADMIN"
-              value={teamId}
-              onChange={(e) => setTeamId(e.target.value)}
-              autoComplete="off"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              className="input"
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-
-          {error && (
-            <div className="login-error animate-fade-in">
-              <span>⚠</span> {error}
+      <section className="login-side">
+        <div className="login-card">
+          <header className="brand">
+            <div className="brand-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64">
+                <path d="M7 53h50" />
+                <path d="M13 48V36" />
+                <path d="M27 48V29" />
+                <path d="M41 48V21" />
+                <path d="M55 48V12" />
+                <path d="M10 34l15-11 9 5 17-18" />
+                <path d="M44 10h8v8" />
+              </svg>
             </div>
-          )}
 
-          <button
-            type="submit"
-            className="btn btn-primary login-btn"
-            disabled={loading || !teamId || !password}
-          >
-            {loading ? (
-              <><div className="loading-spinner" style={{ width: 18, height: 18 }} /> Signing in...</>
-            ) : (
-              'Sign In'
+            <div className="eyebrow">THE</div>
+            <h1>WALL STREET</h1>
+            <div className="arena">ARENA</div>
+
+            <div className="divider"></div>
+
+            <div className="tagline">TRADE &nbsp;/&nbsp; ANALYZE &nbsp;/&nbsp; GROW</div>
+          </header>
+
+          <form id="loginForm" autoComplete="off" onSubmit={handleLogin}>
+            <div className="field">
+              <div className="field-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="8" r="3.2"></circle>
+                  <path d="M5.3 19c.7-3.1 3.1-5 6.7-5s6 1.9 6.7 5"></path>
+                </svg>
+              </div>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                placeholder="Username"
+                value={teamId}
+                onChange={(e) => setTeamId(e.target.value)}
+                required
+                autoFocus
+              />
+            </div>
+
+            <div className="field">
+              <div className="field-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <rect x="5.5" y="10" width="13" height="10" rx="1.8"></rect>
+                  <path d="M8 10V7.4a4 4 0 0 1 8 0V10"></path>
+                  <circle cx="12" cy="15" r="1"></circle>
+                  <path d="M12 16v1.5"></path>
+                </svg>
+              </div>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            <button className="login-btn" type="submit" disabled={loading}>
+              <span>{loading ? 'LOGGING IN...' : <>LOGIN <b className="arrow">→</b></>}</span>
+            </button>
+
+            {error && (
+              <div id="error" className="error show" role="alert">{error}</div>
             )}
-          </button>
-        </form>
-
-        <div className="login-info">
-          <p>🏦 6 fictional companies · 📈 97 trading ticks · 💰 10,000 V-Coins</p>
-          <p className="login-warning">Orders fill at the <strong>next tick's price</strong></p>
+          </form>
         </div>
-      </div>
-    </div>
+
+        <div className="copyright">MARKET SIMULATION • FICTIONAL MARKET</div>
+      </section>
+    </main>
   );
 }

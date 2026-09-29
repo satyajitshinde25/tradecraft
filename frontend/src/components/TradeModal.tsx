@@ -64,7 +64,10 @@ export default function TradeModal({
         )}
 
         <div className="form-group">
-          <label>Quantity</label>
+          <div className="tm-label-row">
+            <label>Order Size (Shares)</label>
+            <span className="tm-max-badge mono">Max: {maxQty}</span>
+          </div>
           <div className="tm-qty-row">
             <input
               className="input mono"
@@ -76,11 +79,39 @@ export default function TradeModal({
               onChange={e => setQuantity(e.target.value)}
               autoFocus
             />
+          </div>
+          <div className="tm-quick-chips">
             <button
-              className="btn btn-outline btn-sm"
+              type="button"
+              className="tm-chip"
+              disabled={maxQty === 0}
+              onClick={() => setQuantity(String(Math.max(1, Math.floor(maxQty * 0.25))))}
+            >
+              25%
+            </button>
+            <button
+              type="button"
+              className="tm-chip"
+              disabled={maxQty === 0}
+              onClick={() => setQuantity(String(Math.max(1, Math.floor(maxQty * 0.50))))}
+            >
+              50%
+            </button>
+            <button
+              type="button"
+              className="tm-chip"
+              disabled={maxQty === 0}
+              onClick={() => setQuantity(String(Math.max(1, Math.floor(maxQty * 0.75))))}
+            >
+              75%
+            </button>
+            <button
+              type="button"
+              className="tm-chip tm-chip-max"
+              disabled={maxQty === 0}
               onClick={() => setQuantity(String(maxQty))}
             >
-              MAX ({maxQty})
+              MAX (100%)
             </button>
           </div>
         </div>
