@@ -1,27 +1,97 @@
-.holdings-card h3,
-.holdings-empty h3 {
-  font-size: 1rem;
+/* ── HoldingsTable.css — Positions Ledger Styling ── */
+
+.holdings-card {
+  padding: 18px 20px;
+}
+
+.holdings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.holdings-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.holdings-title-group h3 {
+  font-size: 0.95rem;
   color: var(--text-primary);
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
-.holdings-empty {
-  text-align: center;
-  padding: 30px;
+.holdings-count {
+  font-size: 0.75rem;
+  color: var(--gold);
+  background: rgba(214, 168, 79, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(214, 168, 79, 0.25);
+  font-weight: 600;
 }
 
-.holdings-empty p {
-  color: var(--text-muted);
-  font-size: 0.85rem;
+.holdings-summary-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.table-responsive-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+}
+
+.h-company-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .h-ticker {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  margin-right: 8px;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-size: 0.95rem;
 }
 
 .h-name {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
+}
+
+/* ── Empty State ── */
+.holdings-empty-card {
+  text-align: center;
+  padding: 36px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.empty-icon-box {
+  font-size: 2rem;
+  margin-bottom: 4px;
+  opacity: 0.7;
+}
+
+.holdings-empty-card h3 {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+
+.holdings-empty-card p {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  max-width: 480px;
+  line-height: 1.5;
 }

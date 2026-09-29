@@ -1,90 +1,189 @@
+/* ── StockCard.css — Market Movers Card Styling ── */
+
 .stock-card {
-  padding: 18px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px;
   cursor: pointer;
+  background: var(--gradient-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  min-height: 215px;
+  position: relative;
+  overflow: hidden;
 }
 
+.stock-card:hover {
+  border-color: var(--border-gold);
+  transform: translateY(-2.5px);
+  box-shadow: var(--shadow-md), 0 0 25px rgba(214, 168, 79, 0.12);
+}
+
+/* Subtle Bull Watermark */
+.sc-bull-watermark {
+  position: absolute;
+  right: -10px;
+  bottom: -15px;
+  width: 130px;
+  height: 130px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  opacity: 0.035;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='%23D6A84F' d='M20 70C30 55 45 50 60 48C75 46 85 38 90 25C90 40 80 55 70 65C60 72 50 75 40 76C30 77 22 75 20 70Z'/%3E%3C/svg%3E");
+}
+
+/* ── Header ── */
 .sc-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
 }
 
 .sc-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  max-width: 60%;
 }
 
 .sc-ticker-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .sc-ticker {
-  font-size: 1.2rem;
-  font-weight: 800;
+  font-size: 1.35rem;
+  font-weight: 900;
   font-family: var(--font-mono);
   color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
-.sc-change-badge {
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  border-radius: 50px;
-  font-weight: 700;
-  font-family: var(--font-mono);
+.sc-sector-pill {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  background: rgba(214, 168, 79, 0.12);
+  border: 1px solid rgba(214, 168, 79, 0.3);
+  padding: 1px 6px;
+  border-radius: 3px;
 }
 
 .sc-name {
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.sc-sector {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-
+/* ── Price Block ── */
 .sc-price-block {
   text-align: right;
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
   gap: 2px;
+  position: relative;
+  z-index: 1;
 }
 
 .sc-price {
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 900;
+  line-height: 1.1;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
-.sc-change {
-  font-size: 0.8rem;
+.sc-delta-row {
+  margin-top: 2px;
 }
 
-.sc-chart {
-  height: 100px;
-  margin: 4px -8px;
+.sc-change-badge {
+  font-size: 0.72rem;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 800;
+  font-family: var(--font-mono);
 }
 
+/* ── Chart Container ── */
+.sc-chart-wrapper {
+  height: 82px;
+  margin: 2px -4px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sc-chart-bg-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.04);
+  pointer-events: none;
+}
+
+/* ── Footer ── */
 .sc-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 6px;
-  border-top: 1px solid rgba(30, 41, 59, 0.5);
+  padding-top: 10px;
+  border-top: 1px solid rgba(28, 43, 63, 0.75);
+  gap: 10px;
+  position: relative;
+  z-index: 1;
 }
 
-.sc-holding-badge {
-  font-size: 0.78rem;
-  color: var(--text-secondary);
+.sc-position {
+  flex: 1;
+  min-width: 0;
+}
+
+.sc-holding-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: var(--text-primary);
+  background: rgba(214, 168, 79, 0.1);
+  border: 1px solid rgba(214, 168, 79, 0.25);
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.sc-holding-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 6px var(--gold);
+}
+
+.sc-no-position {
+  font-size: 0.72rem;
+  color: var(--text-muted);
 }
 
 .sc-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
 }

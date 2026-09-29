@@ -1,49 +1,162 @@
-/* ── Meridia Business Wire & Direct News Pop-Up Styling ── */
+/* ── NewsTicker.css — The Wall Street Chronicle Styling ── */
 
-.meridia-wire-container {
-  padding: 0 24px;
-  margin-top: 16px;
+.chronicle-gazette-panel {
+  padding: 18px 20px;
+  background: linear-gradient(180deg, #141A26 0%, #0C111A 100%);
+  border: 1px solid var(--border-primary);
+  border-left: 3px solid var(--brass);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-/* ── Direct Breaking News Pop-Up Modal ── */
+/* ── Masthead ── */
+.chronicle-masthead {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.masthead-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chronicle-edition {
+  font-size: 0.65rem;
+  color: var(--brass);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.masthead-date-stamp {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.chronicle-main-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.masthead-rule-line {
+  height: 1px;
+  background: linear-gradient(90deg, var(--brass) 0%, rgba(197, 160, 89, 0.2) 60%, transparent 100%);
+  margin-top: 4px;
+}
+
+/* ── Lead Article ── */
+.chronicle-body {
+  padding: 4px 0;
+}
+
+.clickable-article {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.clickable-article:hover {
+  transform: translateX(3px);
+}
+
+.lead-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.lead-tick {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.lead-category {
+  font-size: 0.72rem;
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.lead-headline {
+  font-size: 1.12rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #FFFFFF;
+  margin-bottom: 6px;
+}
+
+.lead-excerpt {
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── Pre-Market Briefing ── */
+.chronicle-premarket-briefing {
+  padding: 4px 0;
+}
+
+/* ── Footer Action Bar ── */
+.chronicle-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.chronicle-status-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Breaking News Modal ── */
 .news-popup-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(6px);
+  inset: 0;
+  background: rgba(4, 6, 10, 0.88);
+  backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  padding: 20px;
+  padding: 18px;
 }
 
 .news-popup-card {
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  border: 2px solid rgba(239, 68, 68, 0.6);
-  border-radius: 12px;
+  background: linear-gradient(180deg, #161D2A 0%, #0B1019 100%);
+  border: 1px solid var(--border-brass);
+  border-left: 4px solid var(--red);
+  border-radius: var(--radius-xl);
   width: 100%;
   max-width: 620px;
-  box-shadow: 0 10px 40px rgba(239, 68, 68, 0.25), 0 0 0 1px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(197, 160, 89, 0.15);
   overflow: hidden;
-  animation: popup-bounce 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: popupSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes popup-bounce {
-  0% { transform: scale(0.92); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+@keyframes popupSlide {
+  0% { transform: scale(0.95) translateY(10px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
 .news-popup-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  background: rgba(239, 68, 68, 0.12);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 14px 20px;
+  background: rgba(217, 56, 58, 0.1);
+  border-bottom: 1px solid rgba(217, 56, 58, 0.25);
 }
 
 .news-popup-brand {
@@ -52,224 +165,161 @@
   gap: 10px;
 }
 
+.live-dot-red {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--red);
+  box-shadow: 0 0 10px var(--red);
+  animation: pulseLive 1.8s infinite;
+}
+
 .news-popup-title {
   font-weight: 800;
-  font-size: 0.9rem;
-  letter-spacing: 1px;
-  color: #fca5a5;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--red-light);
+  text-transform: uppercase;
 }
 
 .news-popup-body {
-  padding: 24px 24px 20px;
+  padding: 22px 24px;
 }
 
 .news-popup-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 0.8rem;
+  gap: 8px;
+  font-size: 0.75rem;
   color: var(--text-muted);
   margin-bottom: 12px;
 }
 
+.meta-tick {
+  color: var(--brass-light);
+  font-weight: 700;
+}
+
+.meta-sep {
+  opacity: 0.4;
+}
+
 .news-popup-topic {
-  color: #93c5fd;
+  color: var(--blue);
+  font-weight: 600;
 }
 
 .news-popup-headline {
-  font-size: 1.35rem;
+  font-size: 1.4rem;
   font-weight: 800;
-  line-height: 1.35;
-  color: #f8fafc;
+  line-height: 1.28;
+  color: #FFFFFF;
   margin-bottom: 12px;
 }
 
 .news-popup-desc {
   font-size: 0.95rem;
-  color: #cbd5e1;
-  line-height: 1.55;
+  color: #D1D5DB;
+  line-height: 1.6;
 }
 
 .news-popup-footer {
   display: flex;
-  justify-content: flex-end;
-  padding: 14px 24px 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.2);
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(8, 12, 18, 0.6);
+  gap: 12px;
 }
 
-/* ── LIVE — MERIDIA BUSINESS WIRE Card ── */
-.meridia-wire-box {
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-left: 4px solid #ef4444;
-  padding: 16px 20px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+.news-popup-rule-hint {
+  font-size: 0.74rem;
+  color: var(--text-muted);
 }
 
-.wire-header {
+/* ── Gazette Archive Drawer ── */
+.history-drawer {
+  margin-top: 10px;
+  padding: 18px;
+  max-height: 480px;
+  overflow-y: auto;
+  border: 1px solid var(--border-secondary);
+}
+
+.drawer-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-primary);
   flex-wrap: wrap;
+}
+
+.drawer-title-group {
+  display: flex;
+  align-items: baseline;
   gap: 10px;
 }
 
-.wire-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.live-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: #ef4444;
-  box-shadow: 0 0 10px #ef4444;
-  animation: pulse-red 1.5s infinite;
-}
-
-@keyframes pulse-red {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-  70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-}
-
-.wire-title {
-  font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: 1px;
-  color: #ef4444;
-}
-
-.wire-meta {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-}
-
-.wire-tick {
-  font-weight: 700;
+.drawer-title-group h3 {
+  font-size: 1.05rem;
   color: var(--text-primary);
+  font-weight: 800;
 }
 
-.wire-time {
-  background: rgba(0, 0, 0, 0.3);
-  padding: 3px 8px;
-  border-radius: 4px;
+.drawer-count {
+  font-size: 0.75rem;
+  color: var(--brass);
+  font-weight: 700;
 }
 
-.wire-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.latest-headline-wrapper {
-  padding: 4px 0;
-}
-
-.clickable-headline {
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
-
-.clickable-headline:hover {
-  transform: translateX(3px);
-}
-
-.headline-badge-row {
+.drawer-header-right {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.headline-tick {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-
-.headline-topic {
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
-  padding-left: 10px;
-}
-
-.latest-headline-text {
-  font-size: 1.25rem;
-  font-weight: 700;
-  line-height: 1.4;
-  color: #f8fafc;
-  margin-bottom: 8px;
-  letter-spacing: -0.2px;
-}
-
-.latest-headline-desc {
-  font-size: 0.88rem;
-  color: #94a3b8;
-  line-height: 1.5;
-  max-width: 900px;
-}
-
-.wire-empty {
-  padding: 16px 0;
-  color: var(--text-muted);
-  font-style: italic;
-  font-size: 0.95rem;
-}
-
-/* ── News History Drawer ── */
-.history-drawer {
-  margin-top: 12px;
-  padding: 20px;
-  max-height: 460px;
-  overflow-y: auto;
+  flex: 1;
+  max-width: 380px;
+  justify-content: flex-end;
 }
 
 .history-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 14px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .history-item {
-  padding: 12px 14px;
-  border-radius: 6px;
-  background: rgba(15, 23, 42, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(9, 14, 22, 0.6);
+  border: 1px solid rgba(28, 38, 54, 0.6);
 }
 
 .clickable-history-item {
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: all 0.15s ease;
 }
 
 .clickable-history-item:hover {
-  background: rgba(30, 41, 59, 0.7);
+  background: rgba(22, 30, 44, 0.8);
+  border-color: var(--border-brass-subtle);
+  transform: translateX(2px);
 }
 
 .history-item-meta {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
-  font-size: 0.75rem;
+  margin-bottom: 4px;
+  font-size: 0.72rem;
 }
 
 .history-tick {
-  color: var(--text-muted);
+  color: var(--brass);
+  font-weight: 700;
 }
 
 .history-time {
@@ -277,18 +327,18 @@
 }
 
 .history-topic {
-  color: var(--text-muted);
-  font-style: italic;
+  color: var(--blue);
 }
 
 .history-headline {
   font-size: 0.92rem;
-  font-weight: 600;
-  margin-bottom: 4px;
+  font-weight: 700;
+  margin-bottom: 3px;
+  color: var(--text-primary);
 }
 
 .history-desc {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -296,7 +346,7 @@
 .history-empty {
   color: var(--text-muted);
   font-style: italic;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   padding: 16px 0;
   text-align: center;
 }

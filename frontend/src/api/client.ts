@@ -1,8 +1,9 @@
-/* ── API Client for Market Sprint Backend ── */
+/* ── API Client for Market Sprint / TradeCraft Backend ── */
 
-// Read API URL from Vite environment, fallback to localhost for development
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const WS_BASE = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
+// Read API URL from Vite environment, fallback to active port 8001 or 8000
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+const WS_BASE = import.meta.env.VITE_WS_URL || 'ws://localhost:8001';
+
 function getToken(): string | null {
   return localStorage.getItem('ms_token');
 }
@@ -21,166 +22,180 @@ function getHeaders(): Record<string, string> {
 async function handleResponse(res: Response) {
   if (!res.ok) {
     const data = await res.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(data.detail || `HTTP ${res.status}`);
+    if (res.status === 401) {
+      throw new Error(data.detail || 'Invalid credentials. Please verify your Floor Access ID and Passkey.');
+    } else if (res.status === 403) {
+      throw new Error(data.detail || 'Access forbidden.');
+    } else if (res.status === 429) {
+      throw new Error(data.detail || 'Account temporarily locked due to excessive failed attempts. Please try again later.');
+    }
+    throw new Error(data.detail || `Server error (HTTP ${res.status})`);
   }
   return res.json();
 }
 
+async function apiFetch(url: string, options: RequestInit = {}) {
+  try {
+    const res = await fetch(url, options);
+    return await handleResponse(res);
+  } catch (err: any) {
+    // If connection to default port fails, attempt fallback to alternate port 8000
+    if (err.name === 'TypeError' && (err.message.includes('fetch') || err.message.includes('Failed') || err.message.includes('network'))) {
+      if (url.includes(':8001')) {
+        const altUrl = url.replace(':8001', ':8000');
+        try {
+          const altRes = await fetch(altUrl, options);
+          return await handleResponse(altRes);
+        } catch (_) {}
+      } else if (url.includes(':8000')) {
+        const altUrl = url.replace(':8000', ':8001');
+        try {
+          const altRes = await fetch(altUrl, options);
+          return await handleResponse(altRes);
+        } catch (_) {}
+      }
+      throw new Error(`Unable to establish connection to backend trading server at ${API_BASE}. Please ensure the server is running on port 8001 or 8000.`);
+    }
+    throw err;
+  }
+}
+
 // ── Auth ──
 export async function login(team_id: string, password: string) {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+  return apiFetch(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ team_id, password }),
   });
-  return handleResponse(res);
 }
 
 export async function logout() {
-  const res = await fetch(`${API_BASE}/auth/logout`, {
+  return apiFetch(`${API_BASE}/auth/logout`, {
     method: 'POST',
     headers: getHeaders(),
   });
-  return handleResponse(res);
 }
 
 // ── Game ──
 export async function getGameState() {
-  const res = await fetch(`${API_BASE}/game/state`, { headers: getHeaders() });
-  return handleResponse(res);
+  return apiFetch(`${API_BASE}/game/state`, { headers: getHeaders() });
 }
 
 // ── Market ──
 export async function getMarketOverview() {
-  const res = await fetch(`${API_BASE}/market/overview`, { headers: getHeaders() });
-  return handleResponse(res);
+  return apiFetch(`${API_BASE}/market/overview`, { headers: getHeaders() });
 }
 
 export async function getCandles(ticker: string) {
-  const res = await fetch(`${API_BASE}/market/${ticker}/candles`, { headers: getHeaders() });
-  return handleResponse(res);
+  return apiFetch(`${API_BASE}/market/${ticker}/candles`, { headers: getHeaders() });
+}
+
+export async function getLeaderboard() {
+  return apiFetch(`${API_BASE}/market/leaderboard`, { headers: getHeaders() });
 }
 
 // ── News ──
 export async function getNews() {
-  const res = await fetch(`${API_BASE}/news`, { headers: getHeaders() });
-  return handleResponse(res);
+  return apiFetch(`${API_BASE}/news`, { headers: getHeaders() });
 }
 
 // ── Portfolio ──
 export async function getPortfolio() {
-  const res = await fetch(`${API_BASE}/portfolio`, { headers: getHeaders() });
-  return handleResponse(res);
+  return apiFetch(`${API_BASE}/portfolio`, { headers: getHeaders() });
 }
 
 // ── Orders ──
 export async function getOrders() {
-  const res = await fetch(`${API_BASE}/orders`, { headers: getHeaders() });
-  return handleResponse(res);
+  return apiFetch(`${API_BASE}/orders`, { headers: getHeaders() });
 }
 
 export async function submitBuy(ticker: string, quantity: number) {
-  const res = await fetch(`${API_BASE}/orders/buy`, {
+  return apiFetch(`${API_BASE}/orders/buy`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ ticker, quantity }),
   });
-  return handleResponse(res);
 }
 
 export async function submitSell(ticker: string, quantity: number) {
-  const res = await fetch(`${API_BASE}/orders/sell`, {
+  return apiFetch(`${API_BASE}/orders/sell`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ ticker, quantity }),
   });
-  return handleResponse(res);
 }
 
 // ── Admin ──
 export async function adminGetGame() {
-  const res = await fetch(`${API_BASE}/admin/game`, { headers: getHeaders() });
-  return handleResponse(res);
+  return apiFetch(`${API_BASE}/admin/game`, { headers: getHeaders() });
 }
 
 export async function adminStartGame() {
-  const res = await fetch(`${API_BASE}/admin/game/start`, {
+  return apiFetch(`${API_BASE}/admin/game/start`, {
     method: 'POST',
     headers: getHeaders(),
   });
-  return handleResponse(res);
 }
 
 export async function adminRestartGame() {
-  const res = await fetch(`${API_BASE}/admin/game/restart`, {
+  return apiFetch(`${API_BASE}/admin/game/restart`, {
     method: 'POST',
     headers: getHeaders(),
   });
-  return handleResponse(res);
 }
 
 export async function adminPauseGame() {
-  const res = await fetch(`${API_BASE}/admin/game/pause`, {
+  return apiFetch(`${API_BASE}/admin/game/pause`, {
     method: 'POST',
     headers: getHeaders(),
   });
-  return handleResponse(res);
 }
 
 export async function adminResumeGame() {
-  const res = await fetch(`${API_BASE}/admin/game/resume`, {
+  return apiFetch(`${API_BASE}/admin/game/resume`, {
     method: 'POST',
     headers: getHeaders(),
   });
-  return handleResponse(res);
 }
 
 export async function adminToggleTestMode() {
-  const res = await fetch(`${API_BASE}/admin/game/test-mode`, {
+  return apiFetch(`${API_BASE}/admin/game/test-mode`, {
     method: 'POST',
     headers: getHeaders(),
   });
-  return handleResponse(res);
 }
 
 export async function adminGetNewsScript() {
-  const res = await fetch(`${API_BASE}/admin/news-script`, { headers: getHeaders() });
-  return handleResponse(res);
+  return apiFetch(`${API_BASE}/admin/news-script`, { headers: getHeaders() });
 }
 
 export async function adminFireReserveHeadline(eventId: string) {
-  const res = await fetch(`${API_BASE}/admin/game/fire-reserve/${eventId}`, {
+  return apiFetch(`${API_BASE}/admin/game/fire-reserve/${eventId}`, {
     method: 'POST',
     headers: getHeaders(),
   });
-  return handleResponse(res);
 }
 
 export async function adminGetCandidateHeadlines(category: string = 'all') {
-  const res = await fetch(`${API_BASE}/admin/news-generator/candidates?category=${category}`, {
+  return apiFetch(`${API_BASE}/admin/news-generator/candidates?category=${category}`, {
     headers: getHeaders(),
   });
-  return handleResponse(res);
 }
 
 export async function adminGetLeaderboard() {
-  const res = await fetch(`${API_BASE}/admin/leaderboard`, { headers: getHeaders() });
-  return handleResponse(res);
+  return apiFetch(`${API_BASE}/admin/leaderboard`, { headers: getHeaders() });
 }
 
 export async function adminGetTeams() {
-  const res = await fetch(`${API_BASE}/admin/teams`, { headers: getHeaders() });
-  return handleResponse(res);
+  return apiFetch(`${API_BASE}/admin/teams`, { headers: getHeaders() });
 }
 
 export async function adminGetOrders() {
-  const res = await fetch(`${API_BASE}/admin/orders`, { headers: getHeaders() });
-  return handleResponse(res);
+  return apiFetch(`${API_BASE}/admin/orders`, { headers: getHeaders() });
 }
 
 export async function adminGetAudit() {
-  const res = await fetch(`${API_BASE}/admin/audit`, { headers: getHeaders() });
-  return handleResponse(res);
+  return apiFetch(`${API_BASE}/admin/audit`, { headers: getHeaders() });
 }
 
 // ── WebSocket ──
@@ -201,18 +216,15 @@ export function createMarketWebSocket(
   const checkHealthAndNotify = async () => {
     if (isClosedIntentionally) return;
     try {
-      // First check if the backend is genuinely unreachable
       const res = await fetch(`${API_BASE}/health`, { method: 'GET', signal: AbortSignal.timeout(2000) });
       if (!res.ok) {
         if (onStatusChange) onStatusChange(true);
       } else {
-        // Backend HTTP is alive; don't show reconnecting immediately
         if (failedAttempts > 2 && onStatusChange) {
           onStatusChange(true);
         }
       }
     } catch {
-      // Backend unreachable, genuinely disconnected
       if (onStatusChange) onStatusChange(true);
     }
   };
@@ -243,7 +255,6 @@ export function createMarketWebSocket(
       };
 
       ws.onerror = () => {
-        // Schedule verification check before displaying any reconnecting badge
         if (!healthCheckTimer && !isClosedIntentionally) {
           healthCheckTimer = setTimeout(checkHealthAndNotify, 2500);
         }
@@ -255,7 +266,6 @@ export function createMarketWebSocket(
         if (!healthCheckTimer) {
           healthCheckTimer = setTimeout(checkHealthAndNotify, 2500);
         }
-        // Auto-reconnect with backoff
         const delay = Math.min(1000 * Math.pow(1.4, failedAttempts), 5000);
         reconnectTimer = setTimeout(() => {
           if (!isClosedIntentionally) connect();
@@ -285,4 +295,3 @@ export function createMarketWebSocket(
     },
   };
 }
-

@@ -12,9 +12,10 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..auth import get_current_team
 from ..models import Team
-from ..schemas import MarketOverviewResponse, CompanyPrice, CandlesResponse, CandleData
+from ..schemas import MarketOverviewResponse, CompanyPrice, CandlesResponse, CandleData, LeaderboardResponse, LeaderboardEntry
 from ..services.game_clock import get_game, get_current_tick
 from ..services.market import get_all_prices_at_tick, get_candles, get_company_by_ticker
+from ..services.leaderboard import calculate_leaderboard
 
 router = APIRouter(prefix="/market", tags=["Market"])
 
@@ -78,3 +79,19 @@ def company_candles(
             for c in candles
         ],
     )
+
+
+@router.get("/leaderboard", response_model=LeaderboardResponse)
+def get_market_leaderboard(
+    team: Team = Depends(get_current_team),
+    db: Session = Depends(get_db),
+):
+    """Get the current live trading floor leaderboard."""
+    game = get_game(db)
+    current_tick = get_current_tick(game)
+    entries = calculate_leaderboard(db, game, current_tick)
+    return LeaderboardResponse(
+        tick=current_tick,
+        entries=[LeaderboardEntry(**e) for e in entries]
+    )
+

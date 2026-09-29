@@ -1,57 +1,156 @@
+/* ── ChartModal.css — Wall Street Candlestick Modal Styling ── */
+
 .chart-modal-overlay {
   z-index: 2000;
 }
 
 .chart-modal-content {
-  max-width: 1000px;
-  width: 90vw;
-  height: 80vh;
+  max-width: 1040px;
+  width: 92vw;
+  height: 82vh;
   display: flex;
   flex-direction: column;
-  padding: 24px;
+  padding: 22px 26px;
+  background: linear-gradient(180deg, #101B2B 0%, #080E17 100%);
+  border: 1px solid var(--border-gold-subtle);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.9), 0 0 35px rgba(214, 168, 79, 0.1);
 }
 
 .cm-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-primary);
+  flex-wrap: wrap;
+  gap: 14px;
 }
 
 .cm-header-info {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 16px;
+}
+
+.cm-ticker-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
 .cm-ticker {
   font-size: 1.8rem;
   font-weight: 800;
-  font-family: var(--font-mono);
-  color: var(--text-primary);
+  color: var(--gold-light);
+  line-height: 1;
+}
+
+.cm-sector-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--gold);
+  background: rgba(214, 168, 79, 0.1);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(214, 168, 79, 0.25);
+  letter-spacing: 0.06em;
+}
+
+.cm-name-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .cm-name {
-  font-size: 1.2rem;
-  color: var(--text-secondary);
+  font-size: 1.15rem;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.cm-market-tag {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+.cm-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.cm-quote-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.cm-price-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .cm-price {
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin-left: 20px;
+  font-size: 1.6rem;
+  font-weight: 800;
 }
 
-.cm-change {
-  font-size: 1.2rem;
+.cm-change-badge {
+  font-size: 0.75rem;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.cm-hilo-group {
+  display: flex;
+  gap: 10px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.cm-quick-actions {
+  display: flex;
+  gap: 6px;
 }
 
 .cm-chart-container {
   flex: 1;
   width: 100%;
   position: relative;
-  border: 1px solid var(--border-secondary);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: var(--bg-input);
+  background: #09101A;
+}
+
+.cm-footer-hint {
+  margin-top: 10px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+}
+
+@media (max-width: 768px) {
+  .chart-modal-content {
+    width: 96vw;
+    height: 90vh;
+    padding: 16px;
+  }
+  .cm-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .cm-header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
 }

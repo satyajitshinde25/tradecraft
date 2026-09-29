@@ -1,6 +1,7 @@
-.order-history-card h3 {
-  font-size: 1rem;
-  color: var(--text-primary);
+/* ── OrderHistory.css — Order Audit Trail Styling ── */
+
+.order-history-card {
+  padding: 18px 20px;
 }
 
 .oh-header {
@@ -8,21 +9,105 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.oh-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.oh-title-group h3 {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .oh-count {
-  font-size: 0.82rem;
-  color: var(--text-secondary);
+  font-size: 0.75rem;
+  color: var(--gold);
+  background: rgba(214, 168, 79, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(214, 168, 79, 0.25);
+  font-weight: 600;
 }
 
-.oh-empty {
+.oh-rule-hint {
+  font-size: 0.72rem;
   color: var(--text-muted);
-  font-size: 0.85rem;
-  text-align: center;
-  padding: 20px;
+  font-style: italic;
 }
 
 .oh-table-wrapper {
-  max-height: 300px;
+  max-height: 380px;
   overflow-y: auto;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+}
+
+.tick-pill {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  background: rgba(11, 19, 31, 0.8);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border-primary);
+}
+
+.side-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  display: inline-block;
+}
+
+.side-buy {
+  background: var(--green-bg);
+  color: var(--green-light);
+  border: 1px solid var(--green-border);
+}
+
+.side-sell {
+  background: var(--red-bg);
+  color: var(--red-light);
+  border: 1px solid var(--red-border);
+}
+
+.oh-pending-tag {
+  color: var(--yellow);
+  font-style: italic;
+  font-size: 0.78rem;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+/* ── Empty State ── */
+.oh-empty-state {
+  text-align: center;
+  padding: 36px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.oh-empty-icon {
+  font-size: 2rem;
+  opacity: 0.7;
+}
+
+.oh-empty-state p {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  max-width: 440px;
+  line-height: 1.5;
 }

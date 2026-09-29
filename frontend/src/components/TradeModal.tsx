@@ -1,4 +1,4 @@
-/* ── Trade Modal — Buy/Sell confirmation ── */
+/* ── Trade Modal — Wall Street Order Execution Ticket ── */
 import { useState } from 'react';
 import './TradeModal.css';
 
@@ -15,59 +15,98 @@ interface Props {
 }
 
 export default function TradeModal({
-  ticker, name, side, currentPrice, cash, holdingQty,
-  feePercent, onConfirm, onClose
+  ticker,
+  name,
+  side,
+  currentPrice,
+  cash,
+  holdingQty,
+  feePercent,
+  onConfirm,
+  onClose
 }: Props) {
   const [quantity, setQuantity] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
-  const qty = parseInt(quantity) || 0;
+  const isBuy = side === 'BUY';
+  const qty = parseInt(quantity, 10) || 0;
   const estimatedValue = qty * currentPrice;
   const fee = estimatedValue * (feePercent / 100);
-  const total = side === 'BUY' ? estimatedValue + fee : estimatedValue - fee;
+  const total = isBuy ? estimatedValue + fee : estimatedValue - fee;
 
   const maxBuyQty = Math.floor((cash * 0.99) / (currentPrice * (1 + feePercent / 100)));
-  const maxQty = side === 'BUY' ? Math.max(0, maxBuyQty) : holdingQty;
+  const maxQty = isBuy ? Math.max(0, maxBuyQty) : holdingQty;
   const meetsMinOrder = estimatedValue >= 100.0;
   const canSubmit = qty > 0 && qty <= maxQty && meetsMinOrder && !loading;
+
+  const handlePercentage = (percent: number) => {
+    const targetQty = Math.floor((maxQty * percent) / 100);
+    setQuantity(String(Math.max(0, targetQty)));
+  };
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setLoading(true);
-    await onConfirm(qty);
-    setLoading(false);
+    try {
+      await onConfirm(qty);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="tm-header">
-          <h2 className={side === 'BUY' ? 'price-up' : 'price-down'}>
-            {side} {ticker}
-          </h2>
-          <button className="btn btn-icon btn-outline" onClick={onClose}>✕</button>
+      <div className="modal-content trade-modal-card" onClick={e => e.stopPropagation()}>
+        {/* Ticket Header */}
+        <div className="tm-ticket-header">
+          <div className="tm-ticket-title-row">
+            <span className="tm-exchange-badge">NYSE SIMULATION</span>
+            <span className="tm-ticket-id">ORDER TICKET</span>
+          </div>
+          <button className="btn btn-icon btn-outline tm-close" onClick={onClose}>✕</button>
         </div>
 
-        <div className="tm-info">
-          <span className="tm-company">{name}</span>
-          <span className="tm-price mono">Market price: ₡{currentPrice.toFixed(2)}</span>
+        <div className="tm-main-info">
+          <div className="tm-side-tag-row">
+            <span className={`tm-side-badge ${isBuy ? 'tm-side-buy' : 'tm-side-sell'}`}>
+              {side} MARKET ORDER
+            </span>
+            <span className="tm-ticker-title mono">{ticker}</span>
+          </div>
+          <div className="tm-company-name">{name}</div>
+          <div className="tm-price-quote mono">
+            Indicative Price: <strong>₡{currentPrice.toFixed(2)}</strong> / share
+          </div>
         </div>
 
-        <div className="tm-warning">
-          ⚡ Orders enter pending status and fill at the <strong>next tick's price</strong>. Minimum order: <strong>₡100</strong>.
+        {/* Official Exchange Rule Reminder */}
+        <div className="tm-rule-box">
+          <span className="tm-rule-icon">⚡</span>
+          <span>
+            Order will enter pending queue and execute at <strong>next tick's opening price</strong>. Minimum order: <strong>₡100</strong>.
+          </span>
         </div>
 
+        {/* Warning if below minimum */}
         {qty > 0 && !meetsMinOrder && (
-          <div className="tm-warning" style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.4)' }}>
-            ⚠️ Order value (₡{estimatedValue.toFixed(2)}) is below the ₡100 minimum order requirement.
+          <div className="tm-error-box animate-fade-in">
+            ⚠️ Order value (₡{estimatedValue.toFixed(2)}) is below the ₡100 minimum execution limit.
           </div>
         )}
 
-        <div className="form-group">
-          <label>Quantity</label>
-          <div className="tm-qty-row">
+        {/* Quantity Input with Allocation Presets */}
+        <div className="tm-form-section">
+          <div className="tm-label-row">
+            <label htmlFor="tm-qty-input">ORDER QUANTITY (SHARES)</label>
+            <span className="tm-max-available mono">
+              Max {isBuy ? 'Purchasable' : 'Available'}: {maxQty.toLocaleString()} shs
+            </span>
+          </div>
+
+          <div className="tm-qty-input-wrapper">
             <input
-              className="input mono"
+              id="tm-qty-input"
+              className="input mono tm-input"
               type="number"
               min="1"
               max={maxQty}
@@ -76,50 +115,52 @@ export default function TradeModal({
               onChange={e => setQuantity(e.target.value)}
               autoFocus
             />
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={() => setQuantity(String(maxQty))}
-            >
-              MAX ({maxQty})
-            </button>
+          </div>
+
+          {/* Quick Allocation Buttons */}
+          <div className="tm-preset-buttons">
+            <button type="button" className="btn-preset" onClick={() => handlePercentage(25)}>25%</button>
+            <button type="button" className="btn-preset" onClick={() => handlePercentage(50)}>50%</button>
+            <button type="button" className="btn-preset" onClick={() => handlePercentage(75)}>75%</button>
+            <button type="button" className="btn-preset btn-preset-max" onClick={() => handlePercentage(100)}>100% MAX</button>
           </div>
         </div>
 
-        {side === 'BUY' && (
-          <div className="tm-detail">
-            <span>Available cash</span>
-            <span className="mono">₡{cash.toFixed(2)}</span>
+        {/* Financial Breakdown Ledger */}
+        <div className="tm-breakdown-ledger">
+          <div className="tm-ledger-row">
+            <span>{isBuy ? 'Available Buying Power' : 'Current Holdings'}</span>
+            <span className="mono">
+              {isBuy ? `₡${cash.toFixed(2)}` : `${holdingQty} shares`}
+            </span>
           </div>
-        )}
-        {side === 'SELL' && (
-          <div className="tm-detail">
-            <span>Current holdings</span>
-            <span className="mono">{holdingQty} shares</span>
+          <div className="tm-ledger-row">
+            <span>Estimated Gross Value</span>
+            <span className="mono">₡{estimatedValue.toFixed(2)}</span>
           </div>
-        )}
-
-        <div className="tm-detail">
-          <span>Estimated {side === 'BUY' ? 'cost' : 'proceeds'}</span>
-          <span className="mono">₡{estimatedValue.toFixed(2)}</span>
-        </div>
-        <div className="tm-detail">
-          <span>Fee ({feePercent}%)</span>
-          <span className="mono">₡{fee.toFixed(2)}</span>
-        </div>
-        <div className="tm-detail tm-total">
-          <span>Estimated total</span>
-          <span className="mono">₡{total.toFixed(2)}</span>
+          <div className="tm-ledger-row">
+            <span>Exchange Regulatory Fee ({feePercent}%)</span>
+            <span className="mono">₡{fee.toFixed(2)}</span>
+          </div>
+          <div className="tm-ledger-row tm-ledger-total">
+            <span>Estimated Net Settlement</span>
+            <span className="mono tm-total-value">₡{total.toFixed(2)}</span>
+          </div>
         </div>
 
+        {/* Submit Execution Action */}
         <button
-          className={`btn ${side === 'BUY' ? 'btn-buy' : 'btn-sell'} tm-submit`}
+          className={`btn ${isBuy ? 'btn-buy' : 'btn-sell'} tm-submit-btn`}
           disabled={!canSubmit}
           onClick={handleSubmit}
         >
           {loading ? (
-            <><div className="loading-spinner" style={{ width: 16, height: 16 }} /> Processing...</>
+            <>
+              <div className="loading-spinner" style={{ width: 16, height: 16, borderTopColor: '#FFFFFF' }} />
+              <span>Transmitting Order to Floor...</span>
+            </>
           ) : (
-            `Confirm ${side}`
+            <span>Authorize & Transmit {side} Order →</span>
           )}
         </button>
       </div>

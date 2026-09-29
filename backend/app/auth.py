@@ -5,7 +5,7 @@ JWT creation, password verification, and FastAPI dependencies.
 """
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
-from passlib.hash import bcrypt
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -21,11 +21,21 @@ security = HTTPBearer()
 # ── Password helpers ───────────────────────────────────────────────
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.verify(plain_password, hashed_password)
+    """Verify a plain password against a bcrypt hash."""
+    try:
+        if isinstance(hashed_password, str):
+            hashed_bytes = hashed_password.encode('utf-8')
+        else:
+            hashed_bytes = hashed_password
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_bytes)
+    except Exception:
+        return False
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hash(password)
+    """Generate a bcrypt hash for a plain password."""
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 
 # ── JWT helpers ────────────────────────────────────────────────────

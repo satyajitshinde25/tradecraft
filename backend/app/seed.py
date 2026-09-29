@@ -22,7 +22,7 @@ from app.models import (
     NewsEvent, TeamWallet, GameStatus
 )
 from app.price_generator import generate_price_series, NEWS_EVENTS_DATA, CANONICAL_COMPANIES
-from passlib.hash import bcrypt
+from app.auth import hash_password
 
 COMPANIES = CANONICAL_COMPANIES
 
@@ -84,7 +84,7 @@ def seed_database():
             password = get_team_password(i)
             credential = TeamCredential(
                 team_id=team.id,
-                password_hash=bcrypt.hash(password),
+                password_hash=hash_password(password),
             )
             db.add(credential)
 

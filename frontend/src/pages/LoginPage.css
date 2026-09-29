@@ -1,20 +1,77 @@
+/* ── LoginPage.css — Manhattan Floor Entrance Styling ── */
+
 .login-page {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   background: var(--gradient-hero);
   position: relative;
   overflow: hidden;
+  padding: 40px 20px;
 }
 
+/* ── Top High-Energy Ticker Tape ── */
+.login-top-tape {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  background: #04070C;
+  border-bottom: 1px solid var(--border-gold-subtle);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+}
+
+.tape-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 36px;
+  animation: tapeScroll 32s linear infinite;
+  padding-left: 100%;
+}
+
+@keyframes tapeScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+.tape-item {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tape-gold {
+  color: var(--gold-light);
+  font-weight: 800;
+  font-family: var(--font-sans);
+  letter-spacing: 0.06em;
+}
+
+.tape-ticker {
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+/* ── Ambient Background & Manhattan Skyline ── */
 .login-bg-grid {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
+    linear-gradient(rgba(214, 168, 79, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(214, 168, 79, 0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  pointer-events: none;
 }
 
 .login-bg-glow {
@@ -22,61 +79,93 @@
   top: 30%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, rgba(214, 168, 79, 0.1) 0%, rgba(17, 27, 40, 0.35) 50%, transparent 70%);
   pointer-events: none;
 }
 
+/* Subtle architectural Manhattan skyline silhouette */
+.login-skyline-silhouette {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 220px;
+  background-repeat: repeat-x;
+  background-position: bottom;
+  background-size: 600px 200px;
+  opacity: 0.07;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 200'%3E%3Cpath fill='%23D6A84F' d='M0 200V140h30v-30h20v30h15v-50h25v-40h10v-30h10v70h15v50h20v-80h35v80h20v-60h25v60h15v-110h20v-40h10v150h30v-70h25v70h20v-90h30v90h25v-130h15v130h30v-40h20v40h35v-80h20v80h30v-50h20v50h20v-100h15v100h25V200H0z'/%3E%3C/svg%3E");
+}
+
+/* ── Main Container ── */
 .login-container {
-  background: rgba(17, 24, 39, 0.85);
-  border: 1px solid var(--border-secondary);
+  background: rgba(11, 18, 30, 0.92);
+  border: 1px solid var(--border-gold);
   border-radius: var(--radius-xl);
-  padding: 48px 40px;
-  width: 420px;
-  max-width: 90vw;
-  backdrop-filter: blur(20px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  padding: 44px 38px;
+  width: 440px;
+  max-width: 95vw;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.85), 0 0 40px rgba(214, 168, 79, 0.12);
   position: relative;
   z-index: 1;
+  margin-top: 24px;
 }
 
-.login-logo {
+.login-card-header {
   text-align: center;
-  margin-bottom: 36px;
+  margin-bottom: 28px;
 }
 
-.login-logo-icon {
+.login-emblem {
   width: 64px;
   height: 64px;
-  margin: 0 auto 16px;
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 16px;
+  margin: 0 auto 14px;
+  background: rgba(214, 168, 79, 0.08);
+  border: 1.5px solid rgba(214, 168, 79, 0.35);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 0 25px rgba(214, 168, 79, 0.2);
 }
 
-.login-logo h1 {
-  font-size: 1.8rem;
+.login-exchange-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  color: var(--gold-light);
   font-weight: 800;
-  background: var(--gradient-primary);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.login-title {
+  font-size: 2.3rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  background: var(--gradient-gold-metallic);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  line-height: 1.1;
 }
 
 .login-subtitle {
-  color: var(--text-muted);
-  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-style: italic;
   margin-top: 4px;
 }
 
+/* ── Form ── */
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
 }
 
 .form-group {
@@ -86,39 +175,137 @@
 }
 
 .form-group label {
-  font-size: 0.85rem;
+  font-size: 0.72rem;
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
+.input-icon-wrapper {
+  position: relative;
+}
+
+/* ── Quick Credentials ── */
+.quick-creds-box {
+  background: rgba(6, 10, 16, 0.7);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quick-creds-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+.quick-creds-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cred-chip {
+  background: rgba(15, 24, 38, 0.95);
+  border: 1px solid var(--border-secondary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cred-chip:hover {
+  border-color: var(--gold);
+  color: var(--gold-light);
+  background: rgba(214, 168, 79, 0.12);
+  transform: translateY(-1px);
+}
+
+.cred-chip-admin {
+  border-color: rgba(214, 168, 79, 0.45);
+  color: var(--gold-light);
+}
+
+/* ── Error Box ── */
 .login-error {
   background: var(--red-bg);
   border: 1px solid var(--red-border);
   color: var(--red-light);
   padding: 10px 14px;
   border-radius: var(--radius-md);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+
+.error-icon {
+  font-size: 1rem;
 }
 
 .login-btn {
   width: 100%;
-  padding: 14px;
-  font-size: 1rem;
+  padding: 13px;
+  font-size: 0.96rem;
   margin-top: 4px;
 }
 
-.login-info {
-  margin-top: 28px;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  line-height: 1.8;
+/* ── Footer Specs ── */
+.login-footer-specs {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  margin-top: 24px;
+  padding: 12px 8px;
+  background: rgba(6, 10, 16, 0.6);
+  border: 1px solid rgba(28, 43, 63, 0.7);
+  border-radius: var(--radius-md);
 }
 
-.login-warning {
-  color: var(--yellow);
-  margin-top: 8px;
+.spec-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.spec-val {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 0.94rem;
+  color: var(--text-primary);
+}
+
+.spec-lbl {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.spec-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-primary);
+}
+
+.login-rule-footer {
+  margin-top: 14px;
+  text-align: center;
+  color: var(--gold-light);
+  font-size: 0.74rem;
+  background: rgba(214, 168, 79, 0.08);
+  padding: 7px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(214, 168, 79, 0.22);
+  font-weight: 500;
 }

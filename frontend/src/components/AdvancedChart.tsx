@@ -1,3 +1,4 @@
+/* ── AdvancedChart — Wall Street Candlestick Trading Terminal ── */
 import { useEffect, useRef } from 'react';
 import { createChart, ColorType, CandlestickSeries, type IChartApi, type ISeriesApi } from 'lightweight-charts';
 import type { CandleData } from '../types';
@@ -7,7 +8,7 @@ interface Props {
   isDarkTheme?: boolean;
 }
 
-export default function AdvancedChart({ candles, isDarkTheme = true }: Props) {
+export default function AdvancedChart({ candles }: Props) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -17,44 +18,69 @@ export default function AdvancedChart({ candles, isDarkTheme = true }: Props) {
 
     const handleResize = () => {
       if (chartRef.current && chartContainerRef.current) {
-        chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
+        chartRef.current.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+          height: chartContainerRef.current.clientHeight
+        });
       }
     };
 
     const chartOptions = {
       layout: {
-        textColor: isDarkTheme ? '#d1d4dc' : '#191919',
-        background: { type: ColorType.Solid, color: 'transparent' },
+        textColor: '#9BA3AF',
+        background: { type: ColorType.Solid, color: '#0C1017' },
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 11,
       },
       grid: {
-        vertLines: { color: isDarkTheme ? '#2B2B43' : '#e1e1e1' },
-        horzLines: { color: isDarkTheme ? '#2B2B43' : '#e1e1e1' },
+        vertLines: { color: 'rgba(30, 38, 54, 0.45)' },
+        horzLines: { color: 'rgba(30, 38, 54, 0.45)' },
       },
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
+        borderColor: '#1E2636',
+      },
+      rightPriceScale: {
+        borderColor: '#1E2636',
+        scaleMargins: {
+          top: 0.12,
+          bottom: 0.12,
+        },
       },
       crosshair: {
-        mode: 1, // Normal crosshair
+        vertLine: {
+          color: 'rgba(197, 160, 89, 0.6)',
+          width: 1 as any,
+          style: 3,
+        },
+        horzLine: {
+          color: 'rgba(197, 160, 89, 0.6)',
+          width: 1 as any,
+          style: 3,
+        },
       },
     };
 
     const chart = createChart(chartContainerRef.current, chartOptions);
     chartRef.current = chart;
 
+    // The Wolf's Den: Emerald (#12A169) & Oxblood (#D9383A)
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#10b981',
-      downColor: '#ef4444',
-      borderVisible: false,
-      wickUpColor: '#10b981',
-      wickDownColor: '#ef4444',
+      upColor: '#12A169',
+      downColor: '#D9383A',
+      borderVisible: true,
+      borderColor: '#12A169',
+      borderUpColor: '#12A169',
+      borderDownColor: '#D9383A',
+      wickUpColor: '#12A169',
+      wickDownColor: '#D9383A',
     });
     seriesRef.current = candlestickSeries;
 
-    // Use a fixed base date to construct realistic looking intraday timestamps
     const baseTime = Math.floor(new Date('2024-01-01T09:30:00Z').getTime() / 1000);
 
-    const formattedData = candles.map((c) => ({
+    const formattedData = (candles || []).map((c) => ({
       time: (baseTime + c.tick * 60) as any,
       open: c.open,
       high: c.high,
@@ -62,8 +88,10 @@ export default function AdvancedChart({ candles, isDarkTheme = true }: Props) {
       close: c.close,
     }));
 
-    candlestickSeries.setData(formattedData);
-    chart.timeScale().fitContent();
+    if (formattedData.length > 0) {
+      candlestickSeries.setData(formattedData);
+      chart.timeScale().fitContent();
+    }
 
     window.addEventListener('resize', handleResize);
 
@@ -71,14 +99,14 @@ export default function AdvancedChart({ candles, isDarkTheme = true }: Props) {
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, [isDarkTheme]);
+  }, []);
 
-  // Update data when candles change
+  // Update data when candles update
   useEffect(() => {
-    if (!seriesRef.current || candles.length === 0) return;
+    if (!seriesRef.current || !candles || candles.length === 0) return;
     const baseTime = Math.floor(new Date('2024-01-01T09:30:00Z').getTime() / 1000);
     const lastCandle = candles[candles.length - 1];
-    
+
     seriesRef.current.update({
       time: (baseTime + lastCandle.tick * 60) as any,
       open: lastCandle.open,

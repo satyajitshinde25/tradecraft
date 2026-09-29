@@ -1,72 +1,235 @@
-.tm-header {
+/* ── TradeModal.css — Wall Street Order Ticket Styling ── */
+
+.trade-modal-card {
+  max-width: 460px;
+  padding: 24px 26px;
+  background: linear-gradient(180deg, #121D2E 0%, #0A121E 100%);
+  border: 1px solid var(--border-gold);
+  box-shadow: var(--shadow-lg), 0 0 35px rgba(0, 0, 0, 0.9);
+}
+
+.tm-ticket-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 14px;
 }
 
-.tm-header h2 {
+.tm-ticket-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tm-exchange-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  background: rgba(214, 168, 79, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(214, 168, 79, 0.25);
+}
+
+.tm-ticket-id {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.tm-close {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+}
+
+/* ── Main Info ── */
+.tm-main-info {
+  margin-bottom: 14px;
+}
+
+.tm-side-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.tm-side-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+
+.tm-side-buy {
+  background: var(--green-bg);
+  color: var(--green-light);
+  border: 1px solid var(--green-border);
+}
+
+.tm-side-sell {
+  background: var(--red-bg);
+  color: var(--red-light);
+  border: 1px solid var(--red-border);
+}
+
+.tm-ticker-title {
   font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.tm-company-name {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.tm-price-quote {
+  font-size: 0.88rem;
+  color: var(--gold-light);
+}
+
+.tm-price-quote strong {
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+/* ── Rule Box ── */
+.tm-rule-box {
+  background: rgba(214, 168, 79, 0.08);
+  border: 1px solid rgba(214, 168, 79, 0.25);
+  color: var(--gold-light);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.76rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.4;
+  margin-bottom: 14px;
+}
+
+.tm-rule-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.tm-error-box {
+  background: var(--red-bg);
+  border: 1px solid var(--red-border);
+  color: var(--red-light);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.76rem;
+  margin-bottom: 12px;
+}
+
+/* ── Form Section ── */
+.tm-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tm-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tm-label-row label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+}
+
+.tm-max-available {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.tm-input {
+  font-size: 1.2rem;
+  font-weight: 700;
+  padding: 10px 14px;
+  background: #080E17;
+}
+
+/* ── Allocation Preset Buttons ── */
+.tm-preset-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.btn-preset {
+  background: rgba(17, 27, 40, 0.8);
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-preset:hover {
+  background: rgba(214, 168, 79, 0.12);
+  border-color: var(--gold);
+  color: var(--gold-light);
+}
+
+.btn-preset-max {
+  border-color: rgba(214, 168, 79, 0.35);
+  color: var(--gold);
+}
+
+/* ── Financial Ledger ── */
+.tm-breakdown-ledger {
+  background: rgba(8, 14, 22, 0.6);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tm-ledger-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.tm-ledger-total {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 8px;
+  margin-top: 4px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tm-total-value {
+  font-size: 1.1rem;
+  color: var(--gold-light);
   font-weight: 800;
 }
 
-.tm-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 16px;
-}
-
-.tm-company {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-
-.tm-price {
-  font-size: 1.1rem;
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.tm-warning {
-  background: var(--yellow-bg);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  color: var(--yellow);
-  padding: 10px 14px;
-  border-radius: var(--radius-md);
-  font-size: 0.82rem;
-  margin-bottom: 20px;
-}
-
-.tm-qty-row {
-  display: flex;
-  gap: 10px;
-}
-
-.tm-qty-row .input {
-  flex: 1;
-}
-
-.tm-detail {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  border-bottom: 1px solid rgba(30, 41, 59, 0.3);
-}
-
-.tm-total {
-  font-weight: 700;
-  color: var(--text-primary);
-  font-size: 1rem;
-  border-bottom: none;
-  padding-top: 12px;
-}
-
-.tm-submit {
+.tm-submit-btn {
   width: 100%;
-  margin-top: 20px;
-  padding: 14px;
-  font-size: 1rem;
+  padding: 12px;
+  font-size: 0.95rem;
 }
