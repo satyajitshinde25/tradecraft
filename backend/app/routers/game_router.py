@@ -1,15 +1,15 @@
+from __future__ import annotations
 """
-Market Sprint — Game Router
+Market Sprint — Game Router (MongoDB)
 
 GET /game/state
 """
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from pymongo.database import Database
 
 from ..database import get_db
 from ..auth import get_current_team
-from ..models import Team
 from ..schemas import GameStateResponse
 from ..services.game_clock import get_game, get_current_tick, get_tick_timing
 
@@ -18,8 +18,8 @@ router = APIRouter(prefix="/game", tags=["Game"])
 
 @router.get("/state", response_model=GameStateResponse)
 def game_state(
-    team: Team = Depends(get_current_team),
-    db: Session = Depends(get_db),
+    team=Depends(get_current_team),
+    db: Database = Depends(get_db),
 ):
     """Get current game state including tick and timing."""
     game = get_game(db)

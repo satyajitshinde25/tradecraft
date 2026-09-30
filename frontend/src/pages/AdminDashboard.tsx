@@ -5,7 +5,8 @@ import {
   adminGetGame, adminStartGame, adminRestartGame,
   adminGetLeaderboard, adminGetOrders, adminGetAudit, logout,
   adminPauseGame, adminResumeGame, adminToggleTestMode,
-  adminGetNewsScript, adminFireReserveHeadline, adminGetCandidateHeadlines
+  adminGetNewsScript, adminFireReserveHeadline, adminGetCandidateHeadlines,
+  adminGetLoggedInTeams, adminClearAudit
 } from '../api/client';
 import type { LeaderboardEntry } from '../types';
 import './AdminDashboard.css';
@@ -17,7 +18,20 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [audit, setAudit] = useState<any[]>([]);
   const [newsScript, setNewsScript] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'leaderboard' | 'orders' | 'audit' | 'news' | 'generator'>('leaderboard');
+  const [loggedInInfo, setLoggedInInfo] = useState<{
+    logged_in_count: number;
+    total_teams: number;
+    teams: any[];
+    all_teams: any[];
+  }>({
+    logged_in_count: 0,
+    total_teams: 25,
+    teams: [],
+    all_teams: [],
+  });
+  const [teamFilter, setTeamFilter] = useState<'all' | 'online' | 'offline'>('all');
+  const [confirmClearAudit, setConfirmClearAudit] = useState(false);
+  const [activeTab, setActiveTab] = useState<'leaderboard' | 'teams-login' | 'orders' | 'audit' | 'news' | 'generator'>('leaderboard');
   const [candidates, setCandidates] = useState<any[]>([]);
   const [candidateCat, setCandidateCat] = useState<string>('all');
   const [candidateLoading, setCandidateLoading] = useState<boolean>(false);
@@ -27,15 +41,17 @@ export default function AdminDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [g, lb, od, au, ns] = await Promise.all([
+      const [g, lb, od, au, ns, li] = await Promise.all([
         adminGetGame(), adminGetLeaderboard(),
         adminGetOrders(), adminGetAudit(), adminGetNewsScript(),
+        adminGetLoggedInTeams().catch(() => null),
       ]);
       setGame(g);
       setLeaderboard(lb);
       setOrders(od.orders || []);
       setAudit(au.logs || []);
       setNewsScript(ns.events || []);
+      if (li) setLoggedInInfo(li);
     } catch (err) {
       console.error('Admin fetch error:', err);
     }
@@ -119,6 +135,18 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleClearAudit = async () => {
+    try {
+      const res = await adminClearAudit();
+      showToast(res.message || 'Audit logs cleared successfully!', 'success');
+      setConfirmClearAudit(false);
+      const au = await adminGetAudit();
+      setAudit(au.logs || []);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to clear audit logs', 'error');
+    }
+  };
+
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
@@ -186,6 +214,17 @@ export default function AdminDashboard() {
           <span className="admin-stat-label">Teams</span>
           <span className="admin-stat-value mono">25</span>
         </div>
+        <div
+          className="admin-stat"
+          onClick={() => setActiveTab('teams-login')}
+          style={{ cursor: 'pointer' }}
+          title="Click to view logged in teams"
+        >
+          <span className="admin-stat-label">Logged In Teams</span>
+          <span className="admin-stat-value mono" style={{ color: loggedInInfo.logged_in_count > 0 ? '#10b981' : 'var(--text-secondary)' }}>
+            {loggedInInfo.logged_in_count} / {loggedInInfo.total_teams || 25}
+          </span>
+        </div>
         <div className="admin-stat">
           <span className="admin-stat-label">Total Orders</span>
           <span className="admin-stat-value mono">{orders.length}</span>
@@ -204,6 +243,9 @@ export default function AdminDashboard() {
         <button className={`admin-tab ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}>
           🏆 Leaderboard
         </button>
+        <button className={`admin-tab ${activeTab === 'teams-login' ? 'active' : ''}`} onClick={() => setActiveTab('teams-login')}>
+          👥 Teams Login ({loggedInInfo.logged_in_count}/{loggedInInfo.total_teams || 25})
+        </button>
         <button className={`admin-tab ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>
           📋 Orders ({orders.length})
         </button>
@@ -214,7 +256,7 @@ export default function AdminDashboard() {
           💡 Fictional News Generator
         </button>
         <button className={`admin-tab ${activeTab === 'audit' ? 'active' : ''}`} onClick={() => setActiveTab('audit')}>
-          📜 Audit Log
+          📜 Audit Log ({audit.length})
         </button>
       </div>
 
@@ -277,6 +319,120 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {activeTab === 'teams-login' && (
+          <div className="card admin-table-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  👥 Team Login Monitor & Active Sessions
+                </h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>
+                  Real-time status of team logins, active session tokens, and last activity timestamps.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 6, background: 'rgba(255,255,255,0.05)', padding: 4, borderRadius: 8 }}>
+                  <button
+                    className={`btn btn-sm ${teamFilter === 'all' ? 'btn-buy' : 'btn-outline'}`}
+                    onClick={() => setTeamFilter('all')}
+                  >
+                    All ({loggedInInfo.total_teams || 25})
+                  </button>
+                  <button
+                    className={`btn btn-sm ${teamFilter === 'online' ? 'btn-buy' : 'btn-outline'}`}
+                    onClick={() => setTeamFilter('online')}
+                  >
+                    Online ({loggedInInfo.logged_in_count})
+                  </button>
+                  <button
+                    className={`btn btn-sm ${teamFilter === 'offline' ? 'btn-buy' : 'btn-outline'}`}
+                    onClick={() => setTeamFilter('offline')}
+                  >
+                    Offline ({(loggedInInfo.total_teams || 25) - loggedInInfo.logged_in_count})
+                  </button>
+                </div>
+                <button className="btn btn-outline btn-sm" onClick={fetchData} title="Refresh team status">
+                  🔄 Refresh
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Summary Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
+              <div style={{ padding: '14px 18px', background: 'rgba(16, 185, 129, 0.08)', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#10b981', fontWeight: 600 }}>Teams Logged In (Online)</div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981', marginTop: 4 }}>
+                  {loggedInInfo.logged_in_count} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 400 }}>/ {loggedInInfo.total_teams || 25}</span>
+                </div>
+              </div>
+              <div style={{ padding: '14px 18px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#ef4444', fontWeight: 600 }}>Teams Pending (Offline)</div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ef4444', marginTop: 4 }}>
+                  {(loggedInInfo.total_teams || 25) - loggedInInfo.logged_in_count}
+                </div>
+              </div>
+              <div style={{ padding: '14px 18px', background: 'rgba(56, 189, 248, 0.08)', borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.25)' }}>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#38bdf8', fontWeight: 600 }}>Login Turnout Rate</div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#38bdf8', marginTop: 4 }}>
+                  {Math.round((loggedInInfo.logged_in_count / (loggedInInfo.total_teams || 25)) * 100)}%
+                </div>
+              </div>
+            </div>
+
+            <div className="admin-table-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Team Code</th>
+                    <th>Team Name</th>
+                    <th>Login Status</th>
+                    <th>Last Login Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(loggedInInfo.all_teams && loggedInInfo.all_teams.length > 0 ? loggedInInfo.all_teams : loggedInInfo.teams)
+                    .filter((t: any) => {
+                      if (teamFilter === 'online') return t.is_logged_in !== false;
+                      if (teamFilter === 'offline') return t.is_logged_in === false;
+                      return true;
+                    })
+                    .map((t: any) => {
+                      const isOnline = t.is_logged_in !== false && (t.is_logged_in === true || !('is_logged_in' in t));
+                      return (
+                        <tr key={t.team_code}>
+                          <td>
+                            <span style={{ fontWeight: 700, fontFamily: 'monospace' }}>{t.team_code}</span>
+                          </td>
+                          <td style={{ fontWeight: 600 }}>{t.display_name}</td>
+                          <td>
+                            {isOnline ? (
+                              <span className="badge badge-green" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
+                                LOGGED IN (ACTIVE)
+                              </span>
+                            ) : (
+                              <span className="badge badge-red" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }} />
+                                OFFLINE
+                              </span>
+                            )}
+                          </td>
+                          <td className="mono" style={{ fontSize: '0.82rem' }}>
+                            {t.last_login_at ? (
+                              new Date(t.last_login_at).toLocaleString()
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)' }}>Never logged in</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'orders' && (
           <div className="card admin-table-card">
             <h3>📋 Recent Orders</h3>
@@ -317,7 +473,23 @@ export default function AdminDashboard() {
 
         {activeTab === 'audit' && (
           <div className="card admin-table-card">
-            <h3>📜 Audit Log</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h3 style={{ margin: 0 }}>📜 Audit Log</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 4 }}>
+                  System audit trail tracking all actions, orders, logins, and game events ({audit.length} entries).
+                </p>
+              </div>
+              <button
+                className="btn btn-sell btn-sm"
+                onClick={() => setConfirmClearAudit(true)}
+                disabled={audit.length === 0}
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                title="Permanently clear all audit logs for this game"
+              >
+                🗑️ Clear Audit Log
+              </button>
+            </div>
             <div className="admin-table-wrapper">
               <table className="data-table">
                 <thead>
@@ -330,15 +502,23 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {audit.slice(0, 100).map((log: any) => (
-                    <tr key={log.id}>
-                      <td className="mono" style={{ fontSize: '0.75rem' }}>{new Date(log.created_at).toLocaleTimeString()}</td>
-                      <td><span className="badge badge-blue">{log.event_type}</span></td>
-                      <td>{log.team_code || '—'}</td>
-                      <td className="mono">{log.tick ?? '—'}</td>
-                      <td style={{ fontSize: '0.82rem', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>{log.message}</td>
+                  {audit.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '28px' }}>
+                        No audit logs found. The audit log is clean.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    audit.slice(0, 100).map((log: any) => (
+                      <tr key={log.id}>
+                        <td className="mono" style={{ fontSize: '0.75rem' }}>{new Date(log.created_at).toLocaleTimeString()}</td>
+                        <td><span className="badge badge-blue">{log.event_type}</span></td>
+                        <td>{log.team_code || '—'}</td>
+                        <td className="mono">{log.tick ?? '—'}</td>
+                        <td style={{ fontSize: '0.82rem', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>{log.message}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -464,6 +644,29 @@ export default function AdminDashboard() {
             <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
               <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setConfirmRestart(false)}>Cancel</button>
               <button className="btn btn-sell" style={{ flex: 1 }} onClick={handleRestart}>Confirm Restart</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Clear Audit Confirmation Modal ── */}
+      {confirmClearAudit && (
+        <div className="modal-overlay" onClick={() => setConfirmClearAudit(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h2>🗑️ Clear Audit Log?</h2>
+            <p style={{ color: 'var(--text-secondary)', margin: '16px 0' }}>
+              Are you sure you want to clear all <strong>{audit.length}</strong> audit log entries for the current game?
+            </p>
+            <div className="tm-warning">
+              ⚠️ This will permanently delete the historical audit records!
+            </div>
+            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setConfirmClearAudit(false)}>
+                Cancel
+              </button>
+              <button className="btn btn-sell" style={{ flex: 1 }} onClick={handleClearAudit}>
+                Confirm Clear
+              </button>
             </div>
           </div>
         </div>

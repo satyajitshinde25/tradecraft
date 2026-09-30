@@ -1,25 +1,27 @@
+from __future__ import annotations
 """
-Market Sprint — Audit Service
+Market Sprint — Audit Service (MongoDB)
 
 Logs all significant events for accountability.
 """
 from datetime import datetime, timezone
-from sqlalchemy.orm import Session
-from ..models import AuditLog
+from typing import Optional
+from pymongo.database import Database
+from ..models import make_audit_log
 
 
 def log_event(
-    db: Session,
+    db: Database,
     event_type: str,
-    game_id: str | None = None,
-    team_id: str | None = None,
-    tick: int | None = None,
-    order_id: str | None = None,
-    message: str | None = None,
-    metadata: dict | None = None,
+    game_id: Optional[str] = None,
+    team_id: Optional[str] = None,
+    tick: Optional[int] = None,
+    order_id: Optional[str] = None,
+    message: Optional[str] = None,
+    metadata: Optional[dict] = None,
 ):
     """Record an audit event."""
-    entry = AuditLog(
+    entry = make_audit_log(
         game_id=game_id,
         team_id=team_id,
         event_type=event_type,
@@ -28,5 +30,4 @@ def log_event(
         message=message,
         metadata_json=metadata,
     )
-    db.add(entry)
-    # Don't commit here — let the caller manage the transaction
+    db.audit_logs.insert_one(entry)

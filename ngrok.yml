@@ -1,0 +1,9 @@
+version: "3"
+agent:
+  authtoken: 3K2Rx56M21kD7HdzLLX9yhtjyYp_YoDkKWKnNMK8fJ4P5u1E
+
+tunnels:
+  tradecraft:
+    proto: http
+    addr: 8000
+    domain: sway-ragweed-perky.ngrok-free.dev

@@ -1,17 +1,17 @@
+from __future__ import annotations
 """
-Market Sprint — Order Router
+Market Sprint — Order Router (MongoDB)
 
 POST /orders/buy: Submit a BUY order (enters PENDING, executes at next tick)
 POST /orders/sell: Submit a SELL order (enters PENDING, executes at next tick)
 GET  /orders: Get all orders for the team, automatically reconciling completed pending fills
 """
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from pymongo.database import Database
 
 from ..database import get_db
 from ..auth import get_current_team
-from ..models import Team, Order, OrderStatus, Company
+from ..models import to_doc, OrderStatus
 from ..schemas import OrderRequest, OrderResponse, OrderListResponse
 from ..services.game_clock import get_game, get_current_tick
 from ..services.market import get_company_by_ticker
@@ -24,8 +24,8 @@ from ..services.audit import log_event
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
 
-def _order_to_response(order: Order, db: Session) -> OrderResponse:
-    company = db.query(Company).filter(Company.id == order.company_id).first()
+def _order_to_response(order, db: Database) -> OrderResponse:
+    company = to_doc(db.companies.find_one({"_id": order.company_id}))
     return OrderResponse(
         order_id=order.id,
         status=order.status,
@@ -47,8 +47,8 @@ def _order_to_response(order: Order, db: Session) -> OrderResponse:
 @router.post("/buy", response_model=OrderResponse)
 def buy_order(
     request: OrderRequest,
-    team: Team = Depends(get_current_team),
-    db: Session = Depends(get_db),
+    team=Depends(get_current_team),
+    db: Database = Depends(get_db),
 ):
     """Submit a BUY order. Enters PENDING state and fills at the next tick's price."""
     game = get_game(db)
@@ -68,7 +68,6 @@ def buy_order(
             order_id=order.id,
             message=f"BUY {request.quantity} {request.ticker} submitted at Tick {order.submitted_tick} (pending fill at Tick {order.fill_tick})",
         )
-        db.commit()
 
         return _order_to_response(order, db)
 
@@ -80,15 +79,14 @@ def buy_order(
             tick=get_current_tick(game),
             message=f"BUY {request.quantity} {request.ticker} rejected: {e.message}",
         )
-        db.commit()
         raise HTTPException(status_code=400, detail=e.message)
 
 
 @router.post("/sell", response_model=OrderResponse)
 def sell_order(
     request: OrderRequest,
-    team: Team = Depends(get_current_team),
-    db: Session = Depends(get_db),
+    team=Depends(get_current_team),
+    db: Database = Depends(get_db),
 ):
     """Submit a SELL order. Enters PENDING state and fills at the next tick's price."""
     game = get_game(db)
@@ -108,7 +106,6 @@ def sell_order(
             order_id=order.id,
             message=f"SELL {request.quantity} {request.ticker} submitted at Tick {order.submitted_tick} (pending fill at Tick {order.fill_tick})",
         )
-        db.commit()
 
         return _order_to_response(order, db)
 
@@ -120,14 +117,13 @@ def sell_order(
             tick=get_current_tick(game),
             message=f"SELL {request.quantity} {request.ticker} rejected: {e.message}",
         )
-        db.commit()
         raise HTTPException(status_code=400, detail=e.message)
 
 
 @router.get("", response_model=OrderListResponse)
 def get_orders(
-    team: Team = Depends(get_current_team),
-    db: Session = Depends(get_db),
+    team=Depends(get_current_team),
+    db: Database = Depends(get_db),
 ):
     """Get all orders for the authenticated team, processing any overdue pending fills."""
     game = get_game(db)
@@ -136,22 +132,18 @@ def get_orders(
     # Process pending orders whose fill tick has arrived
     process_pending_orders(db, game, current_tick)
 
-    orders = (
-        db.query(Order)
-        .filter(Order.team_id == team.id, Order.game_id == game.id)
-        .order_by(Order.submitted_at.desc())
-        .all()
-    )
+    orders = [
+        to_doc(o) for o in
+        db.orders.find(
+            {"team_id": team.id, "game_id": game.id}
+        ).sort("submitted_at", -1)
+    ]
 
-    trade_count = (
-        db.query(func.count(Order.id))
-        .filter(
-            Order.team_id == team.id,
-            Order.game_id == game.id,
-            Order.status == OrderStatus.FILLED.value,
-        )
-        .scalar() or 0
-    )
+    trade_count = db.orders.count_documents({
+        "team_id": team.id,
+        "game_id": game.id,
+        "status": OrderStatus.FILLED.value,
+    })
 
     return OrderListResponse(
         orders=[_order_to_response(o, db) for o in orders],

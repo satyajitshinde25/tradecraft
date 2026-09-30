@@ -3,8 +3,9 @@ Market Sprint — Pydantic Schemas
 
 Request/response models for the API.
 """
+from __future__ import annotations
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 

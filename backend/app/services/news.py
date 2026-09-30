@@ -1,86 +1,67 @@
+from __future__ import annotations
 """
-Market Sprint — News Service
+Market Sprint — News Service (MongoDB)
 
 Releases scheduled and surprise news events at their designated ticks.
 Ensures reserve events are only released manually by authorized organizers.
 Guarantees unreleased surprise headlines and future secret effects are never exposed.
 """
 from datetime import datetime, timezone
-from sqlalchemy.orm import Session
-from ..models import NewsEvent, Game
+from pymongo.database import Database
+from ..models import to_doc
 
 
-def get_released_news(db: Session, game: Game, current_tick: int) -> list[NewsEvent]:
+def get_released_news(db: Database, game, current_tick: int):
     """Get all news events that have been released up to the current tick."""
     # Only auto-release non-reserve events whose designated tick has arrived
-    unreleased = (
-        db.query(NewsEvent)
-        .filter(
-            NewsEvent.game_id == game.id,
-            NewsEvent.event_type != "RESERVE",
-            NewsEvent.release_tick >= 0,
-            NewsEvent.release_tick <= current_tick,
-            NewsEvent.released == False,
-        )
-        .all()
+    db.news_events.update_many(
+        {
+            "game_id": game.id,
+            "event_type": {"$ne": "RESERVE"},
+            "release_tick": {"$gte": 0, "$lte": current_tick},
+            "released": False,
+        },
+        {
+            "$set": {
+                "released": True,
+                "released_at": datetime.now(timezone.utc),
+            }
+        }
     )
-
-    for evt in unreleased:
-        evt.released = True
-        evt.released_at = datetime.now(timezone.utc)
-
-    if unreleased:
-        db.commit()
 
     # Return all released events sorted by release tick descending
-    return (
-        db.query(NewsEvent)
-        .filter(
-            NewsEvent.game_id == game.id,
-            NewsEvent.released == True,
-        )
-        .order_by(NewsEvent.release_tick.desc(), NewsEvent.event_number.desc())
-        .all()
-    )
+    docs = db.news_events.find(
+        {"game_id": game.id, "released": True}
+    ).sort([("release_tick", -1), ("event_number", -1)])
+
+    return [to_doc(d) for d in docs]
 
 
-def get_upcoming_scheduled_events(db: Session, game: Game, current_tick: int) -> list[NewsEvent]:
+def get_upcoming_scheduled_events(db: Database, game, current_tick: int):
     """
     Get scheduled events that haven't been released yet.
     Only exposes the calendar title and forecast, NOT the secret result headline.
     """
-    return (
-        db.query(NewsEvent)
-        .filter(
-            NewsEvent.game_id == game.id,
-            NewsEvent.is_scheduled == True,
-            NewsEvent.released == False,
-            NewsEvent.release_tick > current_tick,
-        )
-        .order_by(NewsEvent.release_tick)
-        .all()
-    )
+    docs = db.news_events.find({
+        "game_id": game.id,
+        "is_scheduled": True,
+        "released": False,
+        "release_tick": {"$gt": current_tick},
+    }).sort("release_tick", 1)
+
+    return [to_doc(d) for d in docs]
 
 
-def reset_news_for_restart(db: Session, game: Game):
+def reset_news_for_restart(db: Database, game):
     """Reset all news events to unreleased state for game restart."""
     # Reset standard events
-    db.query(NewsEvent).filter(
-        NewsEvent.game_id == game.id,
-        NewsEvent.event_type != "RESERVE",
-    ).update({
-        "released": False,
-        "released_at": None,
-    })
+    db.news_events.update_many(
+        {"game_id": game.id, "event_type": {"$ne": "RESERVE"}},
+        {"$set": {"released": False, "released_at": None}}
+    )
 
     # Reset reserve events and restore their release_tick to -1
-    db.query(NewsEvent).filter(
-        NewsEvent.game_id == game.id,
-        NewsEvent.event_type == "RESERVE",
-    ).update({
-        "released": False,
-        "released_at": None,
-        "release_tick": -1,
-    })
-
-    db.commit()
+    db.news_events.update_many(
+        {"game_id": game.id, "event_type": "RESERVE"},
+        {"$set": {"released": False, "released_at": None, "release_tick": -1}}
+    )

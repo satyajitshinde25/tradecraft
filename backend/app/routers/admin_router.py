@@ -1,20 +1,17 @@
+from __future__ import annotations
 """
-Market Sprint — Admin Router
+Market Sprint — Admin Router (MongoDB)
 
 Admin-only endpoints for game control, leaderboard, and monitoring.
 Supports START and RESTART (restart resets all teams to starting balance).
 """
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from pymongo.database import Database
 
 from ..database import get_db
 from ..auth import get_admin_user
-from ..models import (
-    Game, GameStatus, Team, TeamWallet, Holding, Order, OrderFill,
-    PortfolioSnapshot, LeaderboardSnapshot, AuditLog, NewsEvent, OrderStatus
-)
+from ..models import GameStatus, OrderStatus, to_doc
 from ..schemas import (
     GameStateResponse, LeaderboardResponse, LeaderboardEntry,
     AdminTeamStatus, AdminOrderResponse, AuditLogResponse
@@ -31,7 +28,7 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 @router.get("/game")
 def admin_game_state(
     admin: dict = Depends(get_admin_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Get full game state for admin dashboard."""
     game = get_game(db)
@@ -60,7 +57,7 @@ def admin_game_state(
 @router.post("/game/start")
 def start_game(
     admin: dict = Depends(get_admin_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Start the simulation. Sets game_start_time to now."""
     game = get_game(db)
@@ -74,19 +71,21 @@ def start_game(
             detail="Game has finished. Use restart to begin a new session."
         )
 
-    game.status = GameStatus.RUNNING.value
-    game.start_time = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    db.games.update_one(
+        {"_id": game.id},
+        {"$set": {"status": GameStatus.RUNNING.value, "start_time": now, "updated_at": now}}
+    )
 
     log_event(db, "GAME_STARTED", game_id=game.id, tick=0, message="Game started by admin")
-    db.commit()
 
-    return {"message": "Game started", "start_time": game.start_time.isoformat()}
+    return {"message": "Game started", "start_time": now.isoformat()}
 
 
 @router.post("/game/restart")
 def restart_game(
     admin: dict = Depends(get_admin_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """
     Restart the simulation.
@@ -95,34 +94,49 @@ def restart_game(
     """
     game = get_game(db)
 
-    # Clear all trading data
-    db.query(OrderFill).filter(
-        OrderFill.order_id.in_(
-            db.query(Order.id).filter(Order.game_id == game.id)
-        )
-    ).delete(synchronize_session=False)
+    # Clear all order fills for this game's orders
+    order_ids = [o["_id"] for o in db.orders.find({"game_id": game.id}, {"_id": 1})]
+    if order_ids:
+        db.order_fills.delete_many({"order_id": {"$in": order_ids}})
 
-    db.query(Order).filter(Order.game_id == game.id).delete(synchronize_session=False)
+    # Clear all orders
+    db.orders.delete_many({"game_id": game.id})
 
-    # Reset all holdings to 0
-    team_ids = [t.id for t in db.query(Team).filter(Team.game_id == game.id).all()]
-    db.query(Holding).filter(Holding.team_id.in_(team_ids)).delete(synchronize_session=False)
+    # Get team ids
+    team_ids = [t["_id"] for t in db.teams.find({"game_id": game.id}, {"_id": 1})]
+
+    # Reset all holdings
+    if team_ids:
+        db.holdings.delete_many({"team_id": {"$in": team_ids}})
 
     # Reset all wallets to starting balance
-    for wallet in db.query(TeamWallet).filter(TeamWallet.team_id.in_(team_ids)).all():
-        wallet.cash_balance = wallet.starting_balance
+    for wallet_doc in db.team_wallets.find({"team_id": {"$in": team_ids}}):
+        db.team_wallets.update_one(
+            {"_id": wallet_doc["_id"]},
+            {"$set": {
+                "cash_balance": wallet_doc["starting_balance"],
+                "updated_at": datetime.now(timezone.utc),
+            }}
+        )
 
     # Clear snapshots
-    db.query(PortfolioSnapshot).filter(PortfolioSnapshot.game_id == game.id).delete(synchronize_session=False)
-    db.query(LeaderboardSnapshot).filter(LeaderboardSnapshot.game_id == game.id).delete(synchronize_session=False)
+    db.portfolio_snapshots.delete_many({"game_id": game.id})
+    db.leaderboard_snapshots.delete_many({"game_id": game.id})
 
     # Reset news events
     reset_news_for_restart(db, game)
 
     # Reset game state
-    game.status = GameStatus.RUNNING.value
-    game.start_time = datetime.now(timezone.utc)
-    game.end_time = None
+    now = datetime.now(timezone.utc)
+    db.games.update_one(
+        {"_id": game.id},
+        {"$set": {
+            "status": GameStatus.RUNNING.value,
+            "start_time": now,
+            "end_time": None,
+            "updated_at": now,
+        }}
+    )
 
     log_event(
         db, "GAME_RESTARTED",
@@ -130,36 +144,37 @@ def restart_game(
         tick=0,
         message="Game restarted by admin. All teams reset to starting balance.",
     )
-    db.commit()
 
     return {
         "message": "Game restarted. All teams reset to starting balance.",
-        "start_time": game.start_time.isoformat(),
+        "start_time": now.isoformat(),
     }
 
 
 @router.post("/game/pause")
 def pause_game(
     admin: dict = Depends(get_admin_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Pause the simulation clock."""
     game = get_game(db)
     if game.status != GameStatus.RUNNING.value:
         raise HTTPException(status_code=400, detail="Game is not running")
 
-    game.status = GameStatus.PAUSED.value
-    game.paused_at = datetime.now(timezone.utc)
-    
+    now = datetime.now(timezone.utc)
+    db.games.update_one(
+        {"_id": game.id},
+        {"$set": {"status": GameStatus.PAUSED.value, "paused_at": now, "updated_at": now}}
+    )
+
     log_event(db, "GAME_PAUSED", game_id=game.id, tick=get_current_tick(game), message="Game paused by admin")
-    db.commit()
     return {"message": "Game paused"}
 
 
 @router.post("/game/resume")
 def resume_game(
     admin: dict = Depends(get_admin_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Resume the simulation clock by shifting start_time."""
     game = get_game(db)
@@ -170,61 +185,76 @@ def resume_game(
     paused_at = game.paused_at
     if paused_at.tzinfo is None:
         paused_at = paused_at.replace(tzinfo=timezone.utc)
-        
+
     pause_duration = (now - paused_at).total_seconds()
-    
+
     start = game.start_time
     if start.tzinfo is None:
         start = start.replace(tzinfo=timezone.utc)
-        
+
     from datetime import timedelta
-    game.start_time = start + timedelta(seconds=pause_duration)
-    game.status = GameStatus.RUNNING.value
-    game.paused_at = None
-    
+    new_start = start + timedelta(seconds=pause_duration)
+
+    db.games.update_one(
+        {"_id": game.id},
+        {"$set": {
+            "start_time": new_start,
+            "status": GameStatus.RUNNING.value,
+            "paused_at": None,
+            "updated_at": now,
+        }}
+    )
+
+    # Re-fetch for tick calc
+    game = get_game(db)
     log_event(db, "GAME_RESUMED", game_id=game.id, tick=get_current_tick(game), message="Game resumed by admin")
-    db.commit()
     return {"message": "Game resumed"}
 
 
 @router.post("/game/test-mode")
 def toggle_test_mode(
     admin: dict = Depends(get_admin_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Toggle 1 second/tick mode."""
     game = get_game(db)
     if game.status not in (GameStatus.DRAFT.value, GameStatus.READY.value):
         raise HTTPException(status_code=400, detail="Can only toggle test mode before starting")
-        
-    game.is_test_mode = not game.is_test_mode
-    db.commit()
-    return {"message": f"Test mode is now {'ON' if game.is_test_mode else 'OFF'}"}
+
+    new_mode = not game.is_test_mode
+    db.games.update_one(
+        {"_id": game.id},
+        {"$set": {"is_test_mode": new_mode, "updated_at": datetime.now(timezone.utc)}}
+    )
+    return {"message": f"Test mode is now {'ON' if new_mode else 'OFF'}"}
 
 
 @router.get("/news-script")
 def get_news_script(
     admin: dict = Depends(get_admin_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Get the full news script (armed, released, scheduled, reserve)."""
     game = get_game(db)
-    events = db.query(NewsEvent).filter(NewsEvent.game_id == game.id).order_by(NewsEvent.release_tick, NewsEvent.event_number).all()
-    
+    events = list(
+        db.news_events.find({"game_id": game.id})
+        .sort([("release_tick", 1), ("event_number", 1)])
+    )
+
     return {
         "events": [
             {
-                "id": e.id,
-                "event_number": e.event_number,
-                "release_tick": e.release_tick,
-                "event_type": e.event_type,
-                "headline": e.headline,
-                "calendar_title": e.calendar_title,
-                "time_offset": e.time_offset,
-                "forecast": e.forecast,
-                "is_scheduled": e.is_scheduled,
-                "released": e.released,
-                "released_at": e.released_at.isoformat() if e.released_at else None,
+                "id": str(e["_id"]),
+                "event_number": e["event_number"],
+                "release_tick": e["release_tick"],
+                "event_type": e["event_type"],
+                "headline": e["headline"],
+                "calendar_title": e.get("calendar_title"),
+                "time_offset": e.get("time_offset"),
+                "forecast": e.get("forecast"),
+                "is_scheduled": e["is_scheduled"],
+                "released": e["released"],
+                "released_at": e["released_at"].isoformat() if e.get("released_at") else None,
             } for e in events
         ]
     }
@@ -268,38 +298,42 @@ def get_candidate_headlines(
 def fire_reserve(
     event_id: str,
     admin: dict = Depends(get_admin_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Manually fire a reserve headline immediately."""
     game = get_game(db)
     if game.status != GameStatus.RUNNING.value:
         raise HTTPException(status_code=400, detail="Game must be running to fire reserve news")
-        
-    event = db.query(NewsEvent).filter(NewsEvent.id == event_id, NewsEvent.game_id == game.id).first()
+
+    event = to_doc(db.news_events.find_one({"_id": event_id, "game_id": game.id}))
     if not event:
         raise HTTPException(status_code=404, detail="News event not found")
-        
+
     if event.event_type != "RESERVE":
         raise HTTPException(status_code=400, detail="Can only manually fire reserve events")
-        
+
     if event.released:
         raise HTTPException(status_code=400, detail="Event already released")
-        
+
     current_tick = get_current_tick(game)
-    event.released = True
-    event.released_at = datetime.now(timezone.utc)
-    event.release_tick = current_tick
-    
+    db.news_events.update_one(
+        {"_id": event_id},
+        {"$set": {
+            "released": True,
+            "released_at": datetime.now(timezone.utc),
+            "release_tick": current_tick,
+        }}
+    )
+
     log_event(db, "RESERVE_NEWS_FIRED", game_id=game.id, tick=current_tick, message=f"Fired reserve news: {event.headline}")
-    db.commit()
-    
+
     return {"message": f"Reserve news fired successfully at Tick {current_tick}"}
 
 
 @router.get("/leaderboard")
 def admin_leaderboard(
     admin: dict = Depends(get_admin_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Get full leaderboard (admin-only)."""
     game = get_game(db)
@@ -316,7 +350,7 @@ def admin_leaderboard(
 @router.get("/teams")
 def admin_teams(
     admin: dict = Depends(get_admin_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Get detailed status for all 25 teams."""
     game = get_game(db)
@@ -330,30 +364,27 @@ def admin_teams(
 @router.get("/orders")
 def admin_orders(
     admin: dict = Depends(get_admin_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Get all orders across all teams."""
     game = get_game(db)
     current_tick = get_current_tick(game)
     process_pending_orders(db, game, current_tick)
 
-    orders = (
-        db.query(Order, Team.team_code, Game)
-        .join(Team, Team.id == Order.team_id)
-        .join(Game, Game.id == Order.game_id)
-        .filter(Order.game_id == game.id)
-        .order_by(Order.submitted_at.desc())
+    orders = list(
+        db.orders.find({"game_id": game.id})
+        .sort("submitted_at", -1)
         .limit(200)
-        .all()
     )
 
-    from ..models import Company
     result = []
-    for order, team_code, g in orders:
-        company = db.query(Company).filter(Company.id == order.company_id).first()
+    for order_doc in orders:
+        order = to_doc(order_doc)
+        team = to_doc(db.teams.find_one({"_id": order.team_id}))
+        company = to_doc(db.companies.find_one({"_id": order.company_id}))
         result.append({
             "order_id": order.id,
-            "team_code": team_code,
+            "team_code": team.team_code if team else "???",
             "ticker": company.ticker if company else "???",
             "side": order.side,
             "quantity": order.quantity,
@@ -369,33 +400,83 @@ def admin_orders(
     return {"orders": result}
 
 
+@router.get("/logged-in-teams")
+def logged_in_teams(
+    admin: dict = Depends(get_admin_user),
+    db: Database = Depends(get_db),
+):
+    """Get all teams that have logged in (have an active session token) and full teams status."""
+    game = get_game(db)
+    teams = list(db.teams.find({"game_id": game.id}).sort("team_code", 1))
+
+    logged_in = []
+    all_teams_list = []
+    for team_doc in teams:
+        team = to_doc(team_doc)
+        cred = to_doc(db.team_credentials.find_one({"team_id": team.id}))
+        is_active = bool(cred and cred.active_session_token)
+        last_login = cred.last_login_at.isoformat() if (cred and cred.last_login_at) else None
+
+        info = {
+            "team_id": team.id,
+            "team_code": team.team_code,
+            "display_name": team.display_name,
+            "is_logged_in": is_active,
+            "last_login_at": last_login,
+        }
+        all_teams_list.append(info)
+        if is_active:
+            logged_in.append(info)
+
+    return {
+        "logged_in_count": len(logged_in),
+        "total_teams": len(teams),
+        "teams": logged_in,
+        "all_teams": all_teams_list,
+    }
+
+
 @router.get("/audit")
 def admin_audit(
     admin: dict = Depends(get_admin_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Get recent audit logs."""
     game = get_game(db)
 
-    logs = (
-        db.query(AuditLog, Team.team_code)
-        .outerjoin(Team, Team.id == AuditLog.team_id)
-        .filter(AuditLog.game_id == game.id)
-        .order_by(AuditLog.created_at.desc())
+    logs = list(
+        db.audit_logs.find({"game_id": game.id})
+        .sort("created_at", -1)
         .limit(200)
-        .all()
     )
 
-    return {
-        "logs": [
-            {
-                "id": log.id,
-                "event_type": log.event_type,
-                "team_code": team_code,
-                "tick": log.tick,
-                "message": log.message,
-                "created_at": log.created_at.isoformat() if log.created_at else "",
-            }
-            for log, team_code in logs
-        ]
-    }
+    result = []
+    for log_doc in logs:
+        log = to_doc(log_doc)
+        team_code = None
+        if log.team_id:
+            team = to_doc(db.teams.find_one({"_id": log.team_id}))
+            team_code = team.team_code if team else None
+
+        result.append({
+            "id": log.id,
+            "event_type": log.event_type,
+            "team_code": team_code,
+            "tick": log.tick,
+            "message": log.message,
+            "created_at": log.created_at.isoformat() if log.created_at else "",
+        })
+
+    return {"logs": result}
+
+
+@router.delete("/audit/clear")
+def clear_audit(
+    admin: dict = Depends(get_admin_user),
+    db: Database = Depends(get_db),
+):
+    """Clear all audit logs for the current game."""
+    game = get_game(db)
+    result = db.audit_logs.delete_many({"game_id": game.id})
+    log_event(db, "AUDIT_CLEARED", game_id=game.id, message=f"Admin cleared {result.deleted_count} audit log entries")
+    return {"message": f"Cleared {result.deleted_count} audit log entries"}

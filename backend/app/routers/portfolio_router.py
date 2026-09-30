@@ -1,14 +1,14 @@
+from __future__ import annotations
 """
-Market Sprint — Portfolio Router
+Market Sprint — Portfolio Router (MongoDB)
 
 GET /portfolio: Get full portfolio summary for the authenticated team
 """
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from pymongo.database import Database
 
 from ..database import get_db
 from ..auth import get_current_team
-from ..models import Team
 from ..schemas import PortfolioResponse, HoldingResponse
 from ..services.game_clock import get_game, get_current_tick
 from ..services.portfolio import get_portfolio
@@ -19,8 +19,8 @@ router = APIRouter(prefix="/portfolio", tags=["Portfolio"])
 
 @router.get("", response_model=PortfolioResponse)
 def portfolio(
-    team: Team = Depends(get_current_team),
-    db: Session = Depends(get_db),
+    team=Depends(get_current_team),
+    db: Database = Depends(get_db),
 ):
     """Get full portfolio summary for the authenticated team."""
     game = get_game(db)

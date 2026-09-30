@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Market Sprint — Configuration
 """
@@ -6,10 +7,11 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "sqlite:///./market_sprint.db"
+    MONGODB_URI: str = "mongodb://localhost:27017"
+    MONGODB_DB: str = "market_sprint"
     JWT_SECRET: str = "change-me"
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 480  # 8 hours — covers a full event day
+    JWT_EXPIRE_MINUTES: int = 60  # 1 hour contest session
     ADMIN_PASSWORD: str = "admin123"
     CORS_ORIGINS: str = "http://localhost:5173"
 

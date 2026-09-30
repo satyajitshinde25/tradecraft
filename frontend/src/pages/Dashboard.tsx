@@ -190,19 +190,39 @@ export default function Dashboard() {
   }, [gameState?.next_tick_at]);
 
   // ── Trade handler ──
-  const handleTrade = async (ticker: string, quantity: number, side: 'BUY' | 'SELL') => {
+  const handleTrade = async (
+    ticker: string,
+    quantity: number,
+    side: 'BUY' | 'SELL',
+    onRetryStatus?: (msg: string) => void,
+  ) => {
     try {
+      const retryCallback = (attempt: number, maxRetries: number) => {
+        const msg = `⏳ High trading volume on server. Please wait, automatically retrying... (Attempt ${attempt}/${maxRetries})`;
+        if (onRetryStatus) onRetryStatus(msg);
+        showToast(msg, 'error');
+      };
+
       if (side === 'BUY') {
-        await submitBuy(ticker, quantity);
+        await submitBuy(ticker, quantity, retryCallback);
       } else {
-        await submitSell(ticker, quantity);
+        await submitSell(ticker, quantity, retryCallback);
       }
       playTradeSound();
       showToast(`${side} order confirmed: ${quantity} shares of ${ticker} (executing at Tick ${gameState!.current_tick + 1})`, 'success');
       setTradeModal(null);
       fetchAllData();
     } catch (err: any) {
-      showToast(err.message || 'Order failed', 'error');
+      if (err.message && err.message.includes('another device')) {
+        showToast('⚠️ Session ended: Another device logged into this team account.', 'error');
+        setTimeout(() => {
+          localStorage.clear();
+          navigate('/');
+        }, 3000);
+      } else {
+        showToast(err.message || 'Order failed', 'error');
+      }
+      throw err;
     }
   };
 
@@ -599,7 +619,7 @@ export default function Dashboard() {
           cash={portfolio?.cash || 0}
           holdingQty={getHoldingQty(tradeModal.ticker)}
           feePercent={gameState.trade_fee_percent}
-          onConfirm={(qty) => handleTrade(tradeModal.ticker, qty, tradeModal.side)}
+          onConfirm={(qty, onRetry) => handleTrade(tradeModal.ticker, qty, tradeModal.side, onRetry)}
           onClose={() => setTradeModal(null)}
         />
       )}

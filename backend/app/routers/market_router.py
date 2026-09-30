@@ -1,17 +1,16 @@
+from __future__ import annotations
 """
-Market Sprint — Market Router
+Market Sprint — Market Router (MongoDB)
 
 GET /market/overview
-GET /market/{ticker}
 GET /market/{ticker}/candles
 """
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from pymongo.database import Database
 
 from ..database import get_db
 from ..auth import get_current_team
-from ..models import Team
 from ..schemas import MarketOverviewResponse, CompanyPrice, CandlesResponse, CandleData
 from ..services.game_clock import get_game, get_current_tick
 from ..services.market import get_all_prices_at_tick, get_candles, get_company_by_ticker
@@ -21,8 +20,8 @@ router = APIRouter(prefix="/market", tags=["Market"])
 
 @router.get("/overview", response_model=MarketOverviewResponse)
 def market_overview(
-    team: Team = Depends(get_current_team),
-    db: Session = Depends(get_db),
+    team=Depends(get_current_team),
+    db: Database = Depends(get_db),
 ):
     """Get all company prices at the current tick."""
     game = get_game(db)
@@ -51,8 +50,8 @@ def market_overview(
 @router.get("/{ticker}/candles", response_model=CandlesResponse)
 def company_candles(
     ticker: str,
-    team: Team = Depends(get_current_team),
-    db: Session = Depends(get_db),
+    team=Depends(get_current_team),
+    db: Database = Depends(get_db),
 ):
     """Get candle data for a company up to the current tick."""
     game = get_game(db)

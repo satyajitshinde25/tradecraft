@@ -1,18 +1,20 @@
+from __future__ import annotations
 """
-Market Sprint — Authentication Module
+Market Sprint — Authentication Module (MongoDB)
 
 JWT creation, password verification, and FastAPI dependencies.
 """
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from jose import jwt, JWTError
 from passlib.hash import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
+from pymongo.database import Database
 
 from .config import get_settings
 from .database import get_db
-from .models import Team, TeamCredential
+from .models import to_doc
 
 settings = get_settings()
 security = HTTPBearer()
@@ -30,7 +32,7 @@ def hash_password(password: str) -> str:
 
 # ── JWT helpers ────────────────────────────────────────────────────
 
-def create_token(data: dict, expires_delta: timedelta | None = None) -> str:
+def create_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
@@ -56,11 +58,12 @@ def decode_token(token: str) -> dict:
 
 def get_current_team(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db),
-) -> Team:
+    db: Database = Depends(get_db),
+):
     """
     Extract authenticated team from JWT.
     This is the ONLY way to determine team identity — never trust client input.
+    Returns a DotDict with attribute-style access.
     """
     payload = decode_token(credentials.credentials)
     team_id = payload.get("team_id")
@@ -72,7 +75,7 @@ def get_current_team(
             detail="Invalid token",
         )
 
-    team = db.query(Team).filter(Team.id == team_id).first()
+    team = to_doc(db.teams.find_one({"_id": team_id}))
     if not team or not team.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -80,7 +83,7 @@ def get_current_team(
         )
 
     session_token = payload.get("session")
-    credential = db.query(TeamCredential).filter(TeamCredential.team_id == team.id).first()
+    credential = to_doc(db.team_credentials.find_one({"team_id": team.id}))
     if credential and credential.active_session_token and credential.active_session_token != session_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -92,7 +95,7 @@ def get_current_team(
 
 def get_admin_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ) -> dict:
     """
     Validate admin JWT. Returns the decoded payload.

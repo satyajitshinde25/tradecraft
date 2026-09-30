@@ -1,8 +1,21 @@
 /* ── API Client for Market Sprint Backend ── */
 
-// Read API URL from Vite environment, fallback to localhost for development
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const WS_BASE = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
+// Read API URL from Vite environment, fallback dynamically based on window.location
+const isBrowser = typeof window !== 'undefined';
+const isDevServer = isBrowser && window.location.port === '5173';
+
+const defaultApi = isBrowser
+  ? (isDevServer ? 'http://localhost:8000' : '')
+  : 'http://localhost:8000';
+
+const defaultWs = isBrowser
+  ? (isDevServer
+      ? 'ws://localhost:8000'
+      : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`)
+  : 'ws://localhost:8000';
+
+const API_BASE = import.meta.env.VITE_API_URL || defaultApi;
+const WS_BASE = import.meta.env.VITE_WS_URL || defaultWs;
 function getToken(): string | null {
   return localStorage.getItem('ms_token');
 }
@@ -24,6 +37,56 @@ async function handleResponse(res: Response) {
     throw new Error(data.detail || `HTTP ${res.status}`);
   }
   return res.json();
+}
+
+export interface RetryOptions {
+  maxRetries?: number;
+  onRetry?: (attempt: number, maxRetries: number, delayMs: number) => void;
+}
+
+export async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retryOpts?: RetryOptions,
+): Promise<any> {
+  const maxRetries = retryOpts?.maxRetries ?? 3;
+  let attempt = 0;
+
+  while (attempt <= maxRetries) {
+    try {
+      const res = await fetch(url, options);
+
+      // If server returns rate limit (429) or temporary server errors (502, 503, 504)
+      if ((res.status === 429 || res.status >= 502) && attempt < maxRetries) {
+        attempt++;
+        const delay = attempt * 1200;
+        if (retryOpts?.onRetry) {
+          retryOpts.onRetry(attempt, maxRetries, delay);
+        }
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ detail: 'Request failed' }));
+        throw new Error(data.detail || `HTTP ${res.status}`);
+      }
+
+      return res.json();
+    } catch (err: any) {
+      const isNetworkError = err instanceof TypeError || (err.message && (err.message.includes('fetch') || err.message.includes('network') || err.message.includes('Failed to fetch')));
+      if (isNetworkError && attempt < maxRetries) {
+        attempt++;
+        const delay = attempt * 1200;
+        if (retryOpts?.onRetry) {
+          retryOpts.onRetry(attempt, maxRetries, delay);
+        }
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
 // ── Auth ──
@@ -79,22 +142,36 @@ export async function getOrders() {
   return handleResponse(res);
 }
 
-export async function submitBuy(ticker: string, quantity: number) {
-  const res = await fetch(`${API_BASE}/orders/buy`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ ticker, quantity }),
-  });
-  return handleResponse(res);
+export async function submitBuy(
+  ticker: string,
+  quantity: number,
+  onRetry?: (attempt: number, maxRetries: number, delayMs: number) => void
+) {
+  return fetchWithRetry(
+    `${API_BASE}/orders/buy`,
+    {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ ticker, quantity }),
+    },
+    { maxRetries: 3, onRetry }
+  );
 }
 
-export async function submitSell(ticker: string, quantity: number) {
-  const res = await fetch(`${API_BASE}/orders/sell`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ ticker, quantity }),
-  });
-  return handleResponse(res);
+export async function submitSell(
+  ticker: string,
+  quantity: number,
+  onRetry?: (attempt: number, maxRetries: number, delayMs: number) => void
+) {
+  return fetchWithRetry(
+    `${API_BASE}/orders/sell`,
+    {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ ticker, quantity }),
+    },
+    { maxRetries: 3, onRetry }
+  );
 }
 
 // ── Admin ──
@@ -180,6 +257,19 @@ export async function adminGetOrders() {
 
 export async function adminGetAudit() {
   const res = await fetch(`${API_BASE}/admin/audit`, { headers: getHeaders() });
+  return handleResponse(res);
+}
+
+export async function adminGetLoggedInTeams() {
+  const res = await fetch(`${API_BASE}/admin/logged-in-teams`, { headers: getHeaders() });
+  return handleResponse(res);
+}
+
+export async function adminClearAudit() {
+  const res = await fetch(`${API_BASE}/admin/audit/clear`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
   return handleResponse(res);
 }
 

@@ -1,15 +1,15 @@
+from __future__ import annotations
 """
-Market Sprint — News Router
+Market Sprint — News Router (MongoDB)
 
 GET /news: Retrieves all officially released news events and upcoming scheduled events
 (with calendar titles and forecasts only; secret surprise headlines remain hidden).
 """
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from pymongo.database import Database
 
 from ..database import get_db
 from ..auth import get_current_team
-from ..models import Team
 from ..schemas import NewsResponse, NewsEventResponse, UpcomingScheduledEvent
 from ..services.game_clock import get_game, get_current_tick
 from ..services.news import get_released_news, get_upcoming_scheduled_events
@@ -19,8 +19,8 @@ router = APIRouter(prefix="/news", tags=["News"])
 
 @router.get("", response_model=NewsResponse)
 def get_news(
-    team: Team = Depends(get_current_team),
-    db: Session = Depends(get_db),
+    team=Depends(get_current_team),
+    db: Database = Depends(get_db),
 ):
     """Get released news and upcoming scheduled events (sanitized, no leak of results)."""
     game = get_game(db)

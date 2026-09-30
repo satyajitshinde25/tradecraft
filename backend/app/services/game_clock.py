@@ -1,16 +1,17 @@
+from __future__ import annotations
 """
-Market Sprint — Game Clock Service
+Market Sprint — Game Clock Service (MongoDB)
 
 Derives current tick from persisted game_start_time.
 Never uses an in-memory counter.
 """
 from datetime import datetime, timezone
 from math import floor
-from sqlalchemy.orm import Session
-from ..models import Game, GameStatus
+from pymongo.database import Database
+from ..models import GameStatus, to_doc
 
 
-def get_current_tick(game: Game) -> int:
+def get_current_tick(game) -> int:
     """
     Calculate current tick from server time and game start_time.
     Returns 0..96 bounded.
@@ -32,7 +33,7 @@ def get_current_tick(game: Game) -> int:
         start = start.replace(tzinfo=timezone.utc)
 
     elapsed = (end_time - start).total_seconds()
-    
+
     tick_secs = 1 if game.is_test_mode else game.tick_seconds
     tick = floor(elapsed / tick_secs)
 
@@ -42,7 +43,7 @@ def get_current_tick(game: Game) -> int:
     return tick
 
 
-def get_tick_timing(game: Game, current_tick: int) -> dict:
+def get_tick_timing(game, current_tick: int) -> dict:
     """
     Calculate tick start/end times for countdown display.
     """
@@ -74,9 +75,9 @@ def get_tick_timing(game: Game, current_tick: int) -> dict:
     }
 
 
-def get_game(db: Session) -> Game:
-    """Get the active game (there's only one)."""
-    game = db.query(Game).first()
+def get_game(db: Database):
+    """Get the active game (there's only one). Returns a DotDict."""
+    game = to_doc(db.games.find_one())
     if not game:
         raise ValueError("No game found in database")
     return game

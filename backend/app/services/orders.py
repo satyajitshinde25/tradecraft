@@ -1,5 +1,6 @@
+from __future__ import annotations
 """
-Market Sprint — Order Service (Trading Engine)
+Market Sprint — Order Service / Trading Engine (MongoDB)
 
 Core trading logic with strict validation chain and True Next-Tick Execution:
 1. Game is RUNNING and tick < 96
@@ -14,12 +15,11 @@ Core trading logic with strict validation chain and True Next-Tick Execution:
 10. Future prices are never leaked to participants ahead of fill tick
 """
 from datetime import datetime, timezone, timedelta
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from pymongo.database import Database
 
 from ..models import (
-    Order, OrderFill, Holding, TeamWallet, Team, Company,
-    Game, GameStatus, OrderStatus, MarketPrice, AuditLog
+    GameStatus, OrderStatus, to_doc,
+    make_order, make_order_fill, make_holding,
 )
 from ..services.game_clock import get_current_tick
 from ..services.market import get_price_at_tick
@@ -35,51 +35,47 @@ class TradingError(Exception):
 
 
 import threading
+from collections import defaultdict
 
 _order_process_lock = threading.Lock()
+_team_locks = defaultdict(threading.Lock)
+_team_lock_mutex = threading.Lock()
 
 
-def process_pending_orders(db: Session, game: Game, current_tick: int) -> int:
+def get_team_lock(team_id: str) -> threading.Lock:
+    with _team_lock_mutex:
+        return _team_locks[team_id]
+
+
+def process_pending_orders(db: Database, game, current_tick: int) -> int:
     """
     Process any PENDING orders whose fill_tick has arrived (fill_tick <= current_tick).
     Executes fills at the official precomputed price of the fill tick.
     Returns the count of orders processed.
     """
     with _order_process_lock:
-        pending_orders = (
-            db.query(Order)
-            .filter(
-                Order.game_id == game.id,
-                Order.status == OrderStatus.PENDING.value,
-                Order.fill_tick <= current_tick,
-            )
-            .order_by(Order.submitted_at)
-            .all()
+        pending_orders = list(
+            db.orders.find({
+                "game_id": game.id,
+                "status": OrderStatus.PENDING.value,
+                "fill_tick": {"$lte": current_tick},
+            }).sort("submitted_at", 1)
         )
 
         if not pending_orders:
             return 0
 
         processed_count = 0
-        holdings_cache: dict[tuple[str, str], Holding] = {}
 
-        for order in pending_orders:
+        for order_doc in pending_orders:
+            order = to_doc(order_doc)
+
             # Skip if already filled by another call
             if order.status != OrderStatus.PENDING.value:
                 continue
 
-            company = db.query(Company).filter(Company.id == order.company_id).first()
-            wallet = db.query(TeamWallet).filter(TeamWallet.team_id == order.team_id).first()
-
-            cache_key = (order.team_id, order.company_id)
-            if cache_key in holdings_cache:
-                holding = holdings_cache[cache_key]
-            else:
-                holding = (
-                    db.query(Holding)
-                    .filter(Holding.team_id == order.team_id, Holding.company_id == order.company_id)
-                    .first()
-                )
+            company = to_doc(db.companies.find_one({"_id": order.company_id}))
+            wallet = to_doc(db.team_wallets.find_one({"team_id": order.team_id}))
 
             fill_price = get_price_at_tick(db, game, order.company_id, order.fill_tick)
             if fill_price is None:
@@ -95,47 +91,82 @@ def process_pending_orders(db: Session, game: Game, current_tick: int) -> int:
                 reserved_total = order.net_value or actual_total
                 cash_adjustment = reserved_total - actual_total
                 if wallet:
-                    wallet.cash_balance = round(max(0.0, wallet.cash_balance + cash_adjustment), 2)
+                    new_cash = round(max(0.0, wallet.cash_balance + cash_adjustment), 2)
+                    db.team_wallets.update_one(
+                        {"team_id": order.team_id},
+                        {"$set": {"cash_balance": new_cash, "updated_at": datetime.now(timezone.utc)}}
+                    )
 
                 # Update or create holding
+                holding = to_doc(db.holdings.find_one({
+                    "team_id": order.team_id,
+                    "company_id": order.company_id,
+                }))
+
                 if holding:
                     old_total = holding.average_cost * holding.quantity
                     new_qty = holding.quantity + order.quantity
                     new_total = old_total + actual_gross
-                    holding.quantity = new_qty
-                    holding.average_cost = round(new_total / new_qty, 2) if new_qty > 0 else fill_price
+                    new_avg = round(new_total / new_qty, 2) if new_qty > 0 else fill_price
+                    db.holdings.update_one(
+                        {"team_id": order.team_id, "company_id": order.company_id},
+                        {"$set": {"quantity": new_qty, "average_cost": new_avg, "updated_at": datetime.now(timezone.utc)}}
+                    )
                 else:
-                    holding = Holding(
+                    db.holdings.insert_one(make_holding(
                         team_id=order.team_id,
                         company_id=order.company_id,
                         quantity=order.quantity,
                         average_cost=fill_price,
-                    )
-                    db.add(holding)
-                    db.flush()
+                    ))
 
-                holdings_cache[cache_key] = holding
-                order.net_value = actual_total
+                # Update order
+                db.orders.update_one(
+                    {"_id": order.id},
+                    {"$set": {
+                        "status": OrderStatus.FILLED.value,
+                        "fill_price": fill_price,
+                        "gross_value": actual_gross,
+                        "fee": actual_fee,
+                        "net_value": actual_total,
+                    }}
+                )
 
             elif order.side == "SELL":
                 actual_proceeds = round(actual_gross - actual_fee, 2)
                 if wallet:
-                    wallet.cash_balance = round(wallet.cash_balance + actual_proceeds, 2)
+                    new_cash = round(wallet.cash_balance + actual_proceeds, 2)
+                    db.team_wallets.update_one(
+                        {"team_id": order.team_id},
+                        {"$set": {"cash_balance": new_cash, "updated_at": datetime.now(timezone.utc)}}
+                    )
 
+                holding = to_doc(db.holdings.find_one({
+                    "team_id": order.team_id,
+                    "company_id": order.company_id,
+                }))
                 if holding:
-                    holding.quantity = max(0, holding.quantity - order.quantity)
-                    if holding.quantity == 0:
-                        holding.average_cost = 0.0
-                    holdings_cache[cache_key] = holding
+                    new_qty = max(0, holding.quantity - order.quantity)
+                    new_avg = 0.0 if new_qty == 0 else holding.average_cost
+                    db.holdings.update_one(
+                        {"team_id": order.team_id, "company_id": order.company_id},
+                        {"$set": {"quantity": new_qty, "average_cost": new_avg, "updated_at": datetime.now(timezone.utc)}}
+                    )
 
-                order.net_value = actual_proceeds
+                # Update order
+                db.orders.update_one(
+                    {"_id": order.id},
+                    {"$set": {
+                        "status": OrderStatus.FILLED.value,
+                        "fill_price": fill_price,
+                        "gross_value": actual_gross,
+                        "fee": actual_fee,
+                        "net_value": actual_proceeds,
+                    }}
+                )
 
-            order.status = OrderStatus.FILLED.value
-            order.fill_price = fill_price
-            order.gross_value = actual_gross
-            order.fee = actual_fee
-
-            fill = OrderFill(
+            # Create fill record
+            fill = make_order_fill(
                 order_id=order.id,
                 fill_tick=order.fill_tick,
                 fill_price=fill_price,
@@ -143,7 +174,7 @@ def process_pending_orders(db: Session, game: Game, current_tick: int) -> int:
                 fee=actual_fee,
                 filled_at=datetime.now(timezone.utc),
             )
-            db.add(fill)
+            db.order_fills.insert_one(fill)
 
             ticker = company.ticker if company else "STOCK"
             log_event(
@@ -156,304 +187,288 @@ def process_pending_orders(db: Session, game: Game, current_tick: int) -> int:
             )
             processed_count += 1
 
-        if processed_count > 0:
-            try:
-                db.commit()
-            except Exception as e:
-                db.rollback()
-                print(f"[Orders] Error committing pending order fills: {e}")
-                raise
-
         return processed_count
 
 
 def validate_and_execute_buy(
-    db: Session, game: Game, team: Team, company: Company, quantity: int
-) -> Order:
+    db: Database, game, team, company, quantity: int
+):
     """
     Validate and place a BUY order.
     Executes in PENDING state to fill at tick T+1.
+    Returns a DotDict order document.
+    Serialized per team to prevent race conditions during heavy traffic.
     """
-    current_tick = get_current_tick(game)
+    with get_team_lock(team.id):
+        current_tick = get_current_tick(game)
 
-    # 1. Game must be RUNNING and before close
-    if game.status != GameStatus.RUNNING.value:
-        raise TradingError("Market is not open for trading", "MARKET_CLOSED")
+        # 1. Game must be RUNNING and before close
+        if game.status != GameStatus.RUNNING.value:
+            raise TradingError("Market is not open for trading", "MARKET_CLOSED")
 
-    if current_tick >= 96:
-        raise TradingError("Market has closed (tick 96 reached)", "MARKET_CLOSED")
+        if current_tick >= 96:
+            raise TradingError("Market has closed (tick 96 reached)", "MARKET_CLOSED")
 
-    # Process any overdue pending orders before calculating limits
-    process_pending_orders(db, game, current_tick)
+        # Process any overdue pending orders before calculating limits
+        process_pending_orders(db, game, current_tick)
 
-    # 2. Get wallet
-    wallet = db.query(TeamWallet).filter(TeamWallet.team_id == team.id).with_for_update().first()
-    if not wallet:
-        raise TradingError("Wallet not found", "WALLET_ERROR")
+        # 2. Get wallet
+        wallet = to_doc(db.team_wallets.find_one({"team_id": team.id}))
+        if not wallet:
+            raise TradingError("Wallet not found", "WALLET_ERROR")
 
-    # 3. Check cooldown (7 seconds)
-    last_order = (
-        db.query(Order)
-        .filter(
-            Order.team_id == team.id,
-            Order.game_id == game.id,
-            Order.status != OrderStatus.REJECTED.value,
+        # 3. Check cooldown (7 seconds)
+        last_order_doc = db.orders.find_one(
+            {
+                "team_id": team.id,
+                "game_id": game.id,
+                "status": {"$ne": OrderStatus.REJECTED.value},
+            },
+            sort=[("submitted_at", -1)]
         )
-        .order_by(Order.submitted_at.desc())
-        .first()
-    )
 
-    if last_order and last_order.submitted_at:
-        submitted = last_order.submitted_at
-        if submitted.tzinfo is None:
-            submitted = submitted.replace(tzinfo=timezone.utc)
-        cooldown_end = submitted + timedelta(seconds=game.cooldown_seconds)
-        now = datetime.now(timezone.utc)
-        if now < cooldown_end:
-            remaining = (cooldown_end - now).total_seconds()
+        if last_order_doc and last_order_doc.get("submitted_at"):
+            submitted = last_order_doc["submitted_at"]
+            if submitted.tzinfo is None:
+                submitted = submitted.replace(tzinfo=timezone.utc)
+            cooldown_end = submitted + timedelta(seconds=game.cooldown_seconds)
+            now = datetime.now(timezone.utc)
+            if now < cooldown_end:
+                remaining = (cooldown_end - now).total_seconds()
+                raise TradingError(
+                    f"Cooldown active. Wait {remaining:.1f} more seconds.",
+                    "COOLDOWN"
+                )
+
+        # 4. Check trade count <= 22
+        trade_count = db.orders.count_documents({
+            "team_id": team.id,
+            "game_id": game.id,
+            "status": {"$in": [OrderStatus.FILLED.value, OrderStatus.PENDING.value]},
+        })
+
+        if trade_count >= game.max_trades:
             raise TradingError(
-                f"Cooldown active. Wait {remaining:.1f} more seconds.",
-                "COOLDOWN"
+                f"Maximum trade limit reached ({game.max_trades})",
+                "TRADE_LIMIT"
             )
 
-    # 4. Check trade count <= 22
-    trade_count = (
-        db.query(func.count(Order.id))
-        .filter(
-            Order.team_id == team.id,
-            Order.game_id == game.id,
-            Order.status.in_([OrderStatus.FILLED.value, OrderStatus.PENDING.value]),
-        )
-        .scalar() or 0
-    )
+        # 5. Check order size at current price
+        current_price = get_price_at_tick(db, game, company.id, current_tick)
+        if current_price is None:
+            raise TradingError("Current market price not available", "PRICE_ERROR")
 
-    if trade_count >= game.max_trades:
-        raise TradingError(
-            f"Maximum trade limit reached ({game.max_trades})",
-            "TRADE_LIMIT"
-        )
+        estimated_gross = round(current_price * quantity, 2)
 
-    # 5. Check order size at current price
-    current_price = get_price_at_tick(db, game, company.id, current_tick)
-    if current_price is None:
-        raise TradingError("Current market price not available", "PRICE_ERROR")
+        # Rule: 100 V-Coins minimum order
+        if estimated_gross < 100.0:
+            raise TradingError("Minimum order value is 100 V-Coins", "MIN_ORDER_SIZE")
 
-    estimated_gross = round(current_price * quantity, 2)
+        fee = round(estimated_gross * (game.trade_fee_percent / 100), 2)
+        estimated_total = round(estimated_gross + fee, 2)
 
-    # Rule: 100 V-Coins minimum order
-    if estimated_gross < 100.0:
-        raise TradingError("Minimum order value is 100 V-Coins", "MIN_ORDER_SIZE")
+        # 6. Check sufficient cash
+        if wallet.cash_balance < estimated_total:
+            raise TradingError(
+                f"Insufficient cash. Need {estimated_total:.2f} V-Coins, have {wallet.cash_balance:.2f} V-Coins",
+                "INSUFFICIENT_CASH"
+            )
 
-    fee = round(estimated_gross * (game.trade_fee_percent / 100), 2)
-    estimated_total = round(estimated_gross + fee, 2)
+        # 7. Check 35% buy limit (max 35% of portfolio value per buy)
+        portfolio_value = _calculate_portfolio_value(db, game, team, current_tick)
+        max_buy_value = portfolio_value * (game.buy_limit_percent / 100)
+        if estimated_gross > max_buy_value:
+            raise TradingError(
+                f"Buy exceeds {game.buy_limit_percent}% limit. Max {max_buy_value:.2f} V-Coins, order is {estimated_gross:.2f} V-Coins",
+                "BUY_LIMIT"
+            )
 
-    # 6. Check sufficient cash
-    if wallet.cash_balance < estimated_total:
-        raise TradingError(
-            f"Insufficient cash. Need {estimated_total:.2f} V-Coins, have {wallet.cash_balance:.2f} V-Coins",
-            "INSUFFICIENT_CASH"
-        )
+        # 8. Check 60% concentration limit
+        current_holding = to_doc(db.holdings.find_one({
+            "team_id": team.id, "company_id": company.id
+        }))
+        current_qty = current_holding.quantity if current_holding else 0
+        new_qty = current_qty + quantity
+        new_holding_value = new_qty * current_price
+        max_concentration = portfolio_value * (game.concentration_limit / 100)
 
-    # 7. Check 35% buy limit (max 35% of portfolio value per buy)
-    portfolio_value = _calculate_portfolio_value(db, game, team, current_tick)
-    max_buy_value = portfolio_value * (game.buy_limit_percent / 100)
-    if estimated_gross > max_buy_value:
-        raise TradingError(
-            f"Buy exceeds {game.buy_limit_percent}% limit. Max {max_buy_value:.2f} V-Coins, order is {estimated_gross:.2f} V-Coins",
-            "BUY_LIMIT"
-        )
+        if new_holding_value > max_concentration:
+            raise TradingError(
+                f"Would exceed {game.concentration_limit}% concentration limit for {company.ticker}",
+                "CONCENTRATION_LIMIT"
+            )
 
-    # 8. Check 60% concentration limit
-    current_holding = (
-        db.query(Holding)
-        .filter(Holding.team_id == team.id, Holding.company_id == company.id)
-        .first()
-    )
-    current_qty = current_holding.quantity if current_holding else 0
-    new_qty = current_qty + quantity
-    new_holding_value = new_qty * current_price
-    max_concentration = portfolio_value * (game.concentration_limit / 100)
+        # 9. Reserve funds and create PENDING order
+        fill_tick = min(current_tick + 1, 96)
 
-    if new_holding_value > max_concentration:
-        raise TradingError(
-            f"Would exceed {game.concentration_limit}% concentration limit for {company.ticker}",
-            "CONCENTRATION_LIMIT"
+        # Deduct reserved cash from wallet so it cannot be double-spent
+        new_cash = round(wallet.cash_balance - estimated_total, 2)
+        db.team_wallets.update_one(
+            {"team_id": team.id},
+            {"$set": {"cash_balance": new_cash, "updated_at": datetime.now(timezone.utc)}}
         )
 
-    # 9. Reserve funds and create PENDING order
-    fill_tick = min(current_tick + 1, 96)
+        order = make_order(
+            game_id=game.id,
+            team_id=team.id,
+            company_id=company.id,
+            side="BUY",
+            quantity=quantity,
+            submitted_tick=current_tick,
+            submitted_at=datetime.now(timezone.utc),
+            status=OrderStatus.PENDING.value,
+            requested_price=current_price,
+            fill_tick=fill_tick,
+            fill_price=None,  # Hidden until filled at tick T+1
+            fee=fee,
+            gross_value=estimated_gross,
+            net_value=estimated_total,
+        )
+        db.orders.insert_one(order)
 
-    # Deduct reserved cash from wallet so it cannot be double-spent
-    wallet.cash_balance = round(wallet.cash_balance - estimated_total, 2)
-
-    order = Order(
-        game_id=game.id,
-        team_id=team.id,
-        company_id=company.id,
-        side="BUY",
-        quantity=quantity,
-        submitted_tick=current_tick,
-        submitted_at=datetime.now(timezone.utc),
-        status=OrderStatus.PENDING.value,
-        requested_price=current_price,
-        fill_tick=fill_tick,
-        fill_price=None,  # Hidden until filled at tick T+1
-        fee=fee,
-        gross_value=estimated_gross,
-        net_value=estimated_total,
-    )
-    db.add(order)
-    db.commit()
-
-    return order
+        return to_doc(order)
 
 
 def validate_and_execute_sell(
-    db: Session, game: Game, team: Team, company: Company, quantity: int
-) -> Order:
+    db: Database, game, team, company, quantity: int
+):
     """
     Validate and place a SELL order.
     Executes in PENDING state to fill at tick T+1.
+    Returns a DotDict order document.
+    Serialized per team to prevent race conditions during heavy traffic.
     """
-    current_tick = get_current_tick(game)
+    with get_team_lock(team.id):
+        current_tick = get_current_tick(game)
 
-    # 1. Game must be RUNNING and before close
-    if game.status != GameStatus.RUNNING.value:
-        raise TradingError("Market is not open for trading", "MARKET_CLOSED")
+        # 1. Game must be RUNNING and before close
+        if game.status != GameStatus.RUNNING.value:
+            raise TradingError("Market is not open for trading", "MARKET_CLOSED")
 
-    if current_tick >= 96:
-        raise TradingError("Market has closed (tick 96 reached)", "MARKET_CLOSED")
+        if current_tick >= 96:
+            raise TradingError("Market has closed (tick 96 reached)", "MARKET_CLOSED")
 
-    process_pending_orders(db, game, current_tick)
+        process_pending_orders(db, game, current_tick)
 
-    # 2. Get wallet
-    wallet = db.query(TeamWallet).filter(TeamWallet.team_id == team.id).with_for_update().first()
-    if not wallet:
-        raise TradingError("Wallet not found", "WALLET_ERROR")
+        # 2. Get wallet
+        wallet = to_doc(db.team_wallets.find_one({"team_id": team.id}))
+        if not wallet:
+            raise TradingError("Wallet not found", "WALLET_ERROR")
 
-    # 3. Check cooldown
-    last_order = (
-        db.query(Order)
-        .filter(
-            Order.team_id == team.id,
-            Order.game_id == game.id,
-            Order.status != OrderStatus.REJECTED.value,
+        # 3. Check cooldown
+        last_order_doc = db.orders.find_one(
+            {
+                "team_id": team.id,
+                "game_id": game.id,
+                "status": {"$ne": OrderStatus.REJECTED.value},
+            },
+            sort=[("submitted_at", -1)]
         )
-        .order_by(Order.submitted_at.desc())
-        .first()
-    )
 
-    if last_order and last_order.submitted_at:
-        submitted = last_order.submitted_at
-        if submitted.tzinfo is None:
-            submitted = submitted.replace(tzinfo=timezone.utc)
-        cooldown_end = submitted + timedelta(seconds=game.cooldown_seconds)
-        now = datetime.now(timezone.utc)
-        if now < cooldown_end:
-            remaining = (cooldown_end - now).total_seconds()
+        if last_order_doc and last_order_doc.get("submitted_at"):
+            submitted = last_order_doc["submitted_at"]
+            if submitted.tzinfo is None:
+                submitted = submitted.replace(tzinfo=timezone.utc)
+            cooldown_end = submitted + timedelta(seconds=game.cooldown_seconds)
+            now = datetime.now(timezone.utc)
+            if now < cooldown_end:
+                remaining = (cooldown_end - now).total_seconds()
+                raise TradingError(
+                    f"Cooldown active. Wait {remaining:.1f} more seconds.",
+                    "COOLDOWN"
+                )
+
+        # 4. Check trade count
+        trade_count = db.orders.count_documents({
+            "team_id": team.id,
+            "game_id": game.id,
+            "status": {"$in": [OrderStatus.FILLED.value, OrderStatus.PENDING.value]},
+        })
+
+        if trade_count >= game.max_trades:
             raise TradingError(
-                f"Cooldown active. Wait {remaining:.1f} more seconds.",
-                "COOLDOWN"
+                f"Maximum trade limit reached ({game.max_trades})",
+                "TRADE_LIMIT"
             )
 
-    # 4. Check trade count
-    trade_count = (
-        db.query(func.count(Order.id))
-        .filter(
-            Order.team_id == team.id,
-            Order.game_id == game.id,
-            Order.status.in_([OrderStatus.FILLED.value, OrderStatus.PENDING.value]),
+        # 5. Check sufficient holdings
+        holding = to_doc(db.holdings.find_one({
+            "team_id": team.id, "company_id": company.id
+        }))
+
+        if not holding or holding.quantity < quantity:
+            available = holding.quantity if holding else 0
+            raise TradingError(
+                f"Insufficient holdings. Have {available} shares, trying to sell {quantity}",
+                "INSUFFICIENT_HOLDINGS"
+            )
+
+        # 6. Check order size at current price
+        current_price = get_price_at_tick(db, game, company.id, current_tick)
+        if current_price is None:
+            raise TradingError("Current market price not available", "PRICE_ERROR")
+
+        estimated_gross = round(current_price * quantity, 2)
+
+        # Rule: 100 V-Coins minimum order
+        if estimated_gross < 100.0:
+            raise TradingError("Minimum order value is 100 V-Coins", "MIN_ORDER_SIZE")
+
+        fee = round(estimated_gross * (game.trade_fee_percent / 100), 2)
+        estimated_proceeds = round(estimated_gross - fee, 2)
+
+        # 7. Reserve shares and create PENDING order
+        fill_tick = min(current_tick + 1, 96)
+
+        # Deduct shares immediately from holding so they cannot be double-sold
+        new_qty = holding.quantity - quantity
+        db.holdings.update_one(
+            {"team_id": team.id, "company_id": company.id},
+            {"$set": {"quantity": new_qty, "updated_at": datetime.now(timezone.utc)}}
         )
-        .scalar() or 0
-    )
 
-    if trade_count >= game.max_trades:
-        raise TradingError(
-            f"Maximum trade limit reached ({game.max_trades})",
-            "TRADE_LIMIT"
+        order = make_order(
+            game_id=game.id,
+            team_id=team.id,
+            company_id=company.id,
+            side="SELL",
+            quantity=quantity,
+            submitted_tick=current_tick,
+            submitted_at=datetime.now(timezone.utc),
+            status=OrderStatus.PENDING.value,
+            requested_price=current_price,
+            fill_tick=fill_tick,
+            fill_price=None,  # Hidden until filled at tick T+1
+            fee=fee,
+            gross_value=estimated_gross,
+            net_value=estimated_proceeds,
         )
+        db.orders.insert_one(order)
 
-    # 5. Check sufficient holdings
-    holding = (
-        db.query(Holding)
-        .filter(Holding.team_id == team.id, Holding.company_id == company.id)
-        .with_for_update()
-        .first()
-    )
-
-    if not holding or holding.quantity < quantity:
-        available = holding.quantity if holding else 0
-        raise TradingError(
-            f"Insufficient holdings. Have {available} shares, trying to sell {quantity}",
-            "INSUFFICIENT_HOLDINGS"
-        )
-
-    # 6. Check order size at current price
-    current_price = get_price_at_tick(db, game, company.id, current_tick)
-    if current_price is None:
-        raise TradingError("Current market price not available", "PRICE_ERROR")
-
-    estimated_gross = round(current_price * quantity, 2)
-
-    # Rule: 100 V-Coins minimum order
-    if estimated_gross < 100.0:
-        raise TradingError("Minimum order value is 100 V-Coins", "MIN_ORDER_SIZE")
-
-    fee = round(estimated_gross * (game.trade_fee_percent / 100), 2)
-    estimated_proceeds = round(estimated_gross - fee, 2)
-
-    # 7. Reserve shares and create PENDING order
-    fill_tick = min(current_tick + 1, 96)
-
-    # Deduct shares immediately from holding so they cannot be double-sold
-    holding.quantity -= quantity
-
-    order = Order(
-        game_id=game.id,
-        team_id=team.id,
-        company_id=company.id,
-        side="SELL",
-        quantity=quantity,
-        submitted_tick=current_tick,
-        submitted_at=datetime.now(timezone.utc),
-        status=OrderStatus.PENDING.value,
-        requested_price=current_price,
-        fill_tick=fill_tick,
-        fill_price=None,  # Hidden until filled at tick T+1
-        fee=fee,
-        gross_value=estimated_gross,
-        net_value=estimated_proceeds,
-    )
-    db.add(order)
-    db.commit()
-
-    return order
+        return to_doc(order)
 
 
-def _calculate_portfolio_value(db: Session, game: Game, team: Team, tick: int) -> float:
+
+def _calculate_portfolio_value(db: Database, game, team, tick: int) -> float:
     """Calculate total portfolio value (cash + holdings + pending order values)."""
-    wallet = db.query(TeamWallet).filter(TeamWallet.team_id == team.id).first()
+    wallet = to_doc(db.team_wallets.find_one({"team_id": team.id}))
     cash = wallet.cash_balance if wallet else 0.0
 
-    holdings = db.query(Holding).filter(Holding.team_id == team.id).all()
+    holdings = list(db.holdings.find({"team_id": team.id}))
     holdings_value = 0.0
     for h in holdings:
-        if h.quantity > 0:
-            price = get_price_at_tick(db, game, h.company_id, tick)
+        if h["quantity"] > 0:
+            price = get_price_at_tick(db, game, h["company_id"], tick)
             if price:
-                holdings_value += h.quantity * price
+                holdings_value += h["quantity"] * price
 
     # Include reserved assets from pending orders so portfolio doesn't artificially dip
-    pending_buys = (
-        db.query(Order)
-        .filter(
-            Order.team_id == team.id,
-            Order.game_id == game.id,
-            Order.status == OrderStatus.PENDING.value,
-            Order.side == "BUY",
-        )
-        .all()
-    )
-    pending_buy_value = sum(o.gross_value or 0.0 for o in pending_buys)
+    pending_buys = list(db.orders.find({
+        "team_id": team.id,
+        "game_id": game.id,
+        "status": OrderStatus.PENDING.value,
+        "side": "BUY",
+    }))
+    pending_buy_value = sum(o.get("gross_value", 0.0) or 0.0 for o in pending_buys)
 
     return round(cash + holdings_value + pending_buy_value, 2)

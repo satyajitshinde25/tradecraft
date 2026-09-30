@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Market Sprint — Deterministic Price Series Generator
 

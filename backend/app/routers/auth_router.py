@@ -1,17 +1,18 @@
+from __future__ import annotations
 """
-Market Sprint — Auth Router
+Market Sprint — Auth Router (MongoDB)
 
 POST /auth/login
 POST /auth/logout
 """
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from pymongo.database import Database
 
 from ..database import get_db
 from ..auth import verify_password, create_token, get_current_team
 from ..config import get_settings
-from ..models import Team, TeamCredential
+from ..models import to_doc
 from ..schemas import LoginRequest, LoginResponse
 from ..services.audit import log_event
 from ..services.game_clock import get_game
@@ -21,7 +22,7 @@ settings = get_settings()
 
 
 @router.post("/login", response_model=LoginResponse)
-def login(request: LoginRequest, db: Session = Depends(get_db)):
+def login(request: LoginRequest, db: Database = Depends(get_db)):
     """
     Authenticate a team or admin.
     Returns a JWT token on success.
@@ -38,9 +39,11 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 
             try:
                 game = get_game(db)
-                game.admin_session_token = new_token
+                db.games.update_one(
+                    {"_id": game.id},
+                    {"$set": {"admin_session_token": new_token}}
+                )
                 log_event(db, "LOGIN_SUCCESS", game_id=game.id, message="Admin login")
-                db.commit()
             except Exception:
                 pass
 
@@ -64,11 +67,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         num = int(match.group(1))
         team_code = f"TEAM-{num:02d}"
 
-    team = (
-        db.query(Team)
-        .filter(Team.team_code == team_code)
-        .first()
-    )
+    team = to_doc(db.teams.find_one({"team_code": team_code}))
 
     if not team:
         # Generic error — don't reveal whether team exists
@@ -77,11 +76,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
             detail="Invalid credentials",
         )
 
-    credential = (
-        db.query(TeamCredential)
-        .filter(TeamCredential.team_id == team.id)
-        .first()
-    )
+    credential = to_doc(db.team_credentials.find_one({"team_id": team.id}))
 
     if not credential:
         raise HTTPException(
@@ -101,27 +96,34 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
             )
         else:
             # Lockout expired, reset
-            credential.locked_until = None
-            credential.failed_attempts = 0
+            db.team_credentials.update_one(
+                {"team_id": team.id},
+                {"$set": {"locked_until": None, "failed_attempts": 0}}
+            )
 
     # Verify password (test both raw and trimmed)
     password_ok = verify_password(request.password, credential.password_hash) or \
                   verify_password(cleaned_password, credential.password_hash)
     if not password_ok:
-        credential.failed_attempts += 1
+        new_attempts = credential.failed_attempts + 1
+        update_fields = {"failed_attempts": new_attempts}
 
         # Lock after 5 failures
-        if credential.failed_attempts >= 5:
+        if new_attempts >= 5:
             from datetime import timedelta
-            credential.locked_until = datetime.now(timezone.utc) + timedelta(minutes=5)
+            update_fields["locked_until"] = datetime.now(timezone.utc) + timedelta(minutes=5)
+
+        db.team_credentials.update_one(
+            {"team_id": team.id},
+            {"$set": update_fields}
+        )
 
         log_event(
             db, "LOGIN_FAILURE",
             game_id=team.game_id,
             team_id=team.id,
-            message=f"Failed login attempt #{credential.failed_attempts}",
+            message=f"Failed login attempt #{new_attempts}",
         )
-        db.commit()
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -137,10 +139,16 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     # Success — reset failures, create token
     import uuid
     new_token = str(uuid.uuid4())
-    credential.failed_attempts = 0
-    credential.locked_until = None
-    credential.last_login_at = datetime.now(timezone.utc)
-    credential.active_session_token = new_token
+    db.team_credentials.update_one(
+        {"team_id": team.id},
+        {"$set": {
+            "failed_attempts": 0,
+            "locked_until": None,
+            "last_login_at": datetime.now(timezone.utc),
+            "active_session_token": new_token,
+            "updated_at": datetime.now(timezone.utc),
+        }}
+    )
 
     token = create_token({
         "team_id": team.id,
@@ -156,7 +164,6 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         team_id=team.id,
         message=f"{team.team_code} logged in",
     )
-    db.commit()
 
     return LoginResponse(
         token=token,
@@ -168,8 +175,8 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/logout")
 def logout(
-    team: Team = Depends(get_current_team),
-    db: Session = Depends(get_db),
+    team=Depends(get_current_team),
+    db: Database = Depends(get_db),
 ):
     """Log out (mostly for audit trail — JWT is stateless)."""
     log_event(
@@ -178,12 +185,10 @@ def logout(
         team_id=team.id,
         message=f"{team.team_code} logged out",
     )
-    
+
     # Clear active session
-    from ..models import TeamCredential
-    credential = db.query(TeamCredential).filter(TeamCredential.team_id == team.id).first()
-    if credential:
-        credential.active_session_token = None
-        
-    db.commit()
+    db.team_credentials.update_one(
+        {"team_id": team.id},
+        {"$set": {"active_session_token": None}}
+    )
     return {"message": "Logged out"}

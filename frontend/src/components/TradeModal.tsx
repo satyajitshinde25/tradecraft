@@ -10,7 +10,7 @@ interface Props {
   cash: number;
   holdingQty: number;
   feePercent: number;
-  onConfirm: (quantity: number) => void;
+  onConfirm: (quantity: number, onRetry: (msg: string) => void) => Promise<void>;
   onClose: () => void;
 }
 
@@ -20,6 +20,7 @@ export default function TradeModal({
 }: Props) {
   const [quantity, setQuantity] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [retryMsg, setRetryMsg] = useState<string | null>(null);
 
   const qty = parseInt(quantity) || 0;
   const estimatedValue = qty * currentPrice;
@@ -34,8 +35,14 @@ export default function TradeModal({
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setLoading(true);
-    await onConfirm(qty);
-    setLoading(false);
+    setRetryMsg(null);
+    try {
+      await onConfirm(qty, (msg) => setRetryMsg(msg));
+    } catch {
+      // Error is caught and displayed by toast; loading state will reset
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -142,13 +149,19 @@ export default function TradeModal({
           <span className="mono">₡{total.toFixed(2)}</span>
         </div>
 
+        {retryMsg && (
+          <div className="tm-warning" style={{ color: '#fbbf24', borderColor: 'rgba(251, 191, 36, 0.4)', marginTop: 10, fontSize: '0.85rem' }}>
+            {retryMsg}
+          </div>
+        )}
+
         <button
           className={`btn ${side === 'BUY' ? 'btn-buy' : 'btn-sell'} tm-submit`}
           disabled={!canSubmit}
           onClick={handleSubmit}
         >
           {loading ? (
-            <><div className="loading-spinner" style={{ width: 16, height: 16 }} /> Processing...</>
+            <><div className="loading-spinner" style={{ width: 16, height: 16 }} /> {retryMsg ? 'Retrying with Server...' : 'Processing Order...'}</>
           ) : (
             `Confirm ${side}`
           )}
